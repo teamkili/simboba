@@ -117,7 +117,7 @@ def cleanup():
 
 ## Environment Variables
 
-Boba loads `.env` automatically. Set your LLM API key for judging (Claude 3.5 Haiku is the default):
+Boba loads `.env` automatically. Set your LLM API key for judging (Claude Haiku 4.5 is the default):
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-...   # Required for default model (Claude)

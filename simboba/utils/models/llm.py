@@ -10,7 +10,7 @@ class LLMClient:
     """Wrapper for LLM calls using LiteLLM.
 
     Supports any model that LiteLLM supports:
-    - Anthropic: anthropic/claude-3-5-haiku-latest, anthropic/claude-sonnet-4-20250514
+    - Anthropic: anthropic/claude-haiku-4-5-20251001, anthropic/claude-sonnet-4-20250514
     - OpenAI: gpt-4, gpt-4o, gpt-4o-mini
     - Google: gemini/gemini-pro, gemini/gemini-2.0-flash
     - Local: ollama/llama2, ollama/mistral
@@ -22,7 +22,7 @@ class LLMClient:
     - GEMINI_API_KEY for Google models
     """
 
-    DEFAULT_MODEL = "anthropic/claude-3-5-haiku-latest"
+    DEFAULT_MODEL = "anthropic/claude-haiku-4-5-20251001"
 
     def __init__(self, model: Optional[str] = None):
         """Initialize the LLM client.

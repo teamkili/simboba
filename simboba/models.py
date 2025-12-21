@@ -116,7 +116,7 @@ class Settings(Base):
 
     # Default settings
     DEFAULTS = {
-        "model": "anthropic/claude-3-5-haiku-latest",  # Default model for generation and judging
+        "model": "anthropic/claude-haiku-4-5-20251001",  # Default model for generation and judging
     }
 
     @classmethod

@@ -32,7 +32,7 @@ def _maybe_exec_in_docker():
     import sys
 
     # Don't redirect these commands - they need to run locally or handle Docker themselves
-    if len(sys.argv) > 1 and sys.argv[1] in ("init", "setup", "run"):
+    if len(sys.argv) > 1 and sys.argv[1] in ("init", "setup", "magic", "run"):
         return
 
     from simboba.config import maybe_exec_in_docker
