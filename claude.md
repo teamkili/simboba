@@ -6,7 +6,8 @@ Lightweight eval tracking with LLM-as-judge. Users write Python scripts to run e
 
 ```bash
 pip install -e .
-boba init        # Create evals/ folder
+boba init        # Create boba-evals/ folder
+boba magic       # Print AI prompt to configure evals
 boba run         # Run evals (handles Docker automatically)
 boba serve       # View results
 ```
@@ -88,10 +89,11 @@ result = boba.run(
 
 | Command | Description |
 |---------|-------------|
-| `boba init` | Create `evals/` folder with templates |
+| `boba init` | Create `boba-evals/` folder with templates |
 | `boba init --docker` | Quick setup for Docker Compose |
 | `boba init --local` | Quick setup for local Python |
-| `boba setup` | Print AI prompt for configuring eval scripts |
+| `boba magic` | Print detailed AI prompt to configure eval scripts |
+| `boba setup` | Print basic setup instructions |
 | `boba run [script]` | Run eval script (default: `test_chat.py`). Handles Docker automatically |
 | `boba serve` | Start web UI at localhost:8787 |
 | `boba datasets` | List all datasets |
@@ -123,7 +125,7 @@ Note: Runs are created by the Boba class in Python scripts, not via API.
 When configured for Docker (`boba init --docker`), commands auto-exec into the container:
 
 ```yaml
-# evals/.boba.yaml
+# boba-evals/.boba.yaml
 runtime: docker-compose
 service: api
 ```

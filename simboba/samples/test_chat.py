@@ -6,8 +6,8 @@ PURPOSE:
     Modify this script to test different features of your agent.
 
 USAGE:
-    python evals/test_chat.py
-    boba serve  # View results in UI
+    boba run              # Run this eval script
+    boba serve            # View results in UI
 
 --------------------------------------------------------------------------------
 INSTRUCTIONS FOR AI ASSISTANTS (Claude, Cursor, Copilot, etc.)

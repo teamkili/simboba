@@ -26,9 +26,9 @@ class BobaConfig:
 
 
 def find_config() -> Optional[Path]:
-    """Find .boba.yaml in evals/ folder or current directory."""
-    # Check evals/ folder first
-    evals_config = Path("evals") / CONFIG_FILENAME
+    """Find .boba.yaml in boba-evals/ folder or current directory."""
+    # Check boba-evals/ folder first
+    evals_config = Path("boba-evals") / CONFIG_FILENAME
     if evals_config.exists():
         return evals_config
 

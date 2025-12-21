@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-DEFAULT_DB_PATH = Path.cwd() / "evals" / "simboba.db"
+DEFAULT_DB_PATH = Path.cwd() / "boba-evals" / "simboba.db"
 
 
 class Base(DeclarativeBase):

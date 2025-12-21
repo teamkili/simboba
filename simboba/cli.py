@@ -67,13 +67,13 @@ _maybe_exec_in_docker()
 @click.option("--docker", "use_docker", is_flag=True, help="Quick setup for Docker Compose environments")
 @click.option("--local", "use_local", is_flag=True, help="Quick setup for local Python environments")
 def init(use_docker: bool, use_local: bool):
-    """Initialize evals folder with starter templates."""
+    """Initialize boba-evals folder with starter templates."""
     from pathlib import Path
     from simboba.config import BobaConfig, save_config, CONFIG_FILENAME
 
-    evals_dir = Path("evals")
+    evals_dir = Path("boba-evals")
     if evals_dir.exists():
-        click.echo("evals/ folder already exists")
+        click.echo("boba-evals/ folder already exists")
         return
 
     # Determine runtime mode
@@ -133,7 +133,7 @@ def init(use_docker: bool, use_local: bool):
 
     # Success message
     click.echo("")
-    click.echo(click.style("Created evals/ folder", fg="green"))
+    click.echo(click.style("Created boba-evals/ folder", fg="green"))
     click.echo("  - setup.py       (shared test fixtures)")
     click.echo("  - test_chat.py   (example eval script)")
     click.echo("")
@@ -144,16 +144,12 @@ def init(use_docker: bool, use_local: bool):
         click.echo("  1. Add simboba to your container's dependencies")
         click.echo("  2. Expose port 8787 in docker-compose.yml")
         click.echo("  3. docker compose build && docker compose up -d")
-        click.echo("  4. Edit evals/setup.py and evals/test_chat.py")
-        click.echo("     (or run 'boba setup' for AI assistance)")
-        click.echo("  5. boba run")
-        click.echo("  6. boba serve")
+        click.echo("  4. Run 'boba magic' and paste into your AI coding tool")
+        click.echo("  5. boba serve")
     else:
         click.echo("Next steps:")
-        click.echo("  1. Edit evals/setup.py and evals/test_chat.py")
-        click.echo("     (or run 'boba setup' for AI assistance)")
-        click.echo("  2. boba run")
-        click.echo("  3. boba serve")
+        click.echo("  1. Run 'boba magic' and paste into your AI coding tool")
+        click.echo("  2. boba serve")
 
 
 @main.command()
@@ -180,34 +176,30 @@ def serve(host: str, port: int, reload: bool):
 
 @main.command()
 def setup():
-    """Print instructions for AI-assisted setup.
-
-    Outputs a prompt you can paste into Claude Code, Cursor, or other AI coding tools
-    to automatically configure your eval scripts.
-    """
+    """Print basic setup instructions (use 'boba magic' for guided AI setup)."""
     from pathlib import Path
 
-    if not Path("evals").is_dir():
-        click.echo("No evals/ folder found. Run 'boba init' first.", err=True)
+    if not Path("boba-evals").is_dir():
+        click.echo("No boba-evals/ folder found. Run 'boba init' first.", err=True)
         raise SystemExit(1)
 
     prompt = '''I need help setting up boba eval scripts for this project.
 
-Please analyze this codebase and update the files in evals/:
+Please analyze this codebase and update the files in boba-evals/:
 
-1. **evals/setup.py** - Create test fixtures:
+1. **boba-evals/setup.py** - Create test fixtures:
    - Look at the app's data models (User, Project, etc.)
    - Update get_context() to create test data needed for the agent
    - Return a dict with IDs and tokens the agent will need
 
-2. **evals/test_chat.py** - Connect the agent:
+2. **boba-evals/test_chat.py** - Connect the agent:
    - Find how to call the agent/API in this codebase
    - Update the agent() function to call it with the test context
    - The function receives a message string and should return a response string
 
 Look at the instructions in each file for more details.
 
-After you're done, I'll run: python evals/test_chat.py'''
+After you're done, I'll run: boba run'''
 
     click.echo("")
     click.echo("Copy this prompt into your AI coding tool (Claude Code, Cursor, etc.):")
@@ -216,7 +208,128 @@ After you're done, I'll run: python evals/test_chat.py'''
     click.echo(prompt)
     click.echo(click.style("-" * 60, fg="bright_black"))
     click.echo("")
-    click.echo("The AI will analyze your codebase and update the eval scripts.")
+    click.echo("Tip: Use 'boba magic' for a more guided AI setup experience.")
+
+
+@main.command()
+def magic():
+    """Print a detailed prompt for AI coding tools to set up your evals."""
+    from pathlib import Path
+
+    if not Path("boba-evals").is_dir():
+        click.echo("No boba-evals/ folder found. Run 'boba init' first.", err=True)
+        raise SystemExit(1)
+
+    prompt = '''# Setting Up Boba Evals
+
+I need help setting up boba eval scripts for this project. Boba is a lightweight eval tracking tool that runs Python scripts and tracks results in a web UI.
+
+## Your Task
+
+Please analyze this codebase and configure the files in `boba-evals/`:
+
+### 1. boba-evals/setup.py - Create Test Fixtures
+
+This file creates any test data your agent needs to run. Look at the app's data models and determine what context is required.
+
+```python
+def get_context():
+    """Create test fixtures and return context dict.
+
+    Examples of what you might create:
+    - Test user account with API token
+    - Test project/workspace
+    - Sample documents or data
+
+    Return a dict with IDs and credentials the agent will need.
+    """
+    # Example:
+    # user = create_test_user(email="eval@test.com")
+    # return {"user_id": user.id, "token": user.api_token}
+    return {}
+
+def cleanup():
+    """Optional: clean up test data after evals."""
+    pass
+```
+
+### 2. boba-evals/test_chat.py - Connect Your Agent
+
+This file runs the actual evals. You need to update the `agent()` function to call your agent/API.
+
+```python
+from simboba import Boba
+from setup import get_context, cleanup
+
+boba = Boba()
+
+def agent(message: str) -> str:
+    """Call your agent and return its response.
+
+    This function receives a user message and should:
+    1. Get test context (user IDs, tokens, etc.)
+    2. Call your agent/API with the message
+    3. Return the response as a string
+    """
+    ctx = get_context()
+    # TODO: Call your agent here
+    # response = your_agent.chat(message, user_id=ctx["user_id"])
+    # return response
+    return "Not implemented"
+
+if __name__ == "__main__":
+    try:
+        # Single eval example
+        boba.eval(
+            input="Hello, how can you help me?",
+            output=agent("Hello, how can you help me?"),
+            expected="Should greet the user and explain capabilities",
+        )
+
+        # Or run against a dataset:
+        # boba.run(agent, dataset="my-dataset")
+
+        print("Done! Run 'boba serve' to view results.")
+    finally:
+        cleanup()
+```
+
+## What to Look For
+
+1. **How is the agent called?** Look for:
+   - API endpoints (e.g., `/api/chat`, `/api/agent`)
+   - Python functions (e.g., `agent.run()`, `chat()`)
+   - SDK clients
+
+2. **What context does it need?** Look for:
+   - User authentication (user ID, API token)
+   - Session or conversation IDs
+   - Project/workspace context
+
+3. **What's the response format?**
+   - Extract the text response from whatever the agent returns
+
+## After Setup
+
+Once you've configured both files, tell me to run:
+```bash
+boba run
+```
+
+This will execute the eval script and track results. Then run `boba serve` to view results in the web UI.'''
+
+    click.echo("")
+    click.echo(click.style(BOBA_ART, fg="magenta"))
+    click.echo(click.style("Copy the prompt below into your AI coding tool:", bold=True))
+    click.echo(click.style("(Claude Code, Cursor, Windsurf, etc.)", fg="bright_black"))
+    click.echo("")
+    click.echo(click.style("=" * 60, fg="magenta"))
+    click.echo(prompt)
+    click.echo(click.style("=" * 60, fg="magenta"))
+    click.echo("")
+    click.echo("After your AI sets up the files, run:")
+    click.echo(click.style("  boba run", fg="cyan"))
+    click.echo("")
 
 
 @main.command()
@@ -228,9 +341,9 @@ def run(script: str):
 
     \b
     Examples:
-        boba run                    # Runs evals/test_chat.py
+        boba run                    # Runs boba-evals/test_chat.py
         boba run test_chat.py       # Same as above
-        boba run my_eval.py         # Runs evals/my_eval.py
+        boba run my_eval.py         # Runs boba-evals/my_eval.py
     """
     import subprocess
     import sys
@@ -238,13 +351,13 @@ def run(script: str):
     from simboba.config import load_config, inside_container
 
     # Resolve script path
-    script_path = Path("evals") / script
+    script_path = Path("boba-evals") / script
     if not script_path.exists():
         # Maybe they passed a full path
         script_path = Path(script)
         if not script_path.exists():
             click.echo(f"Script not found: {script}", err=True)
-            click.echo("Make sure the file exists in evals/ folder.")
+            click.echo("Make sure the file exists in boba-evals/ folder.")
             raise SystemExit(1)
 
     config = load_config()

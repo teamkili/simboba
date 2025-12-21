@@ -21,8 +21,8 @@ pip install simboba
 ## Quick Start
 
 ```bash
-boba init          # Create evals/ folder with templates
-# Edit evals/setup.py and evals/test_chat.py (or run `boba setup` for AI help)
+boba init          # Create boba-evals/ folder with templates
+boba magic         # Print AI prompt to help configure your evals
 boba run           # Run your evals (handles Docker automatically)
 boba serve         # View results at http://localhost:8787
 ```
@@ -31,8 +31,9 @@ boba serve         # View results at http://localhost:8787
 
 | Command | Description |
 |---------|-------------|
-| `boba init` | Create `evals/` folder with starter templates |
-| `boba setup` | Print AI prompt to help configure your eval scripts |
+| `boba init` | Create `boba-evals/` folder with starter templates |
+| `boba magic` | Print detailed AI prompt to configure your eval scripts |
+| `boba setup` | Print basic setup instructions |
 | `boba run [script]` | Run eval script (default: `test_chat.py`). Handles Docker automatically |
 | `boba serve` | Start web UI to view results |
 | `boba datasets` | List all datasets |
@@ -41,7 +42,7 @@ boba serve         # View results at http://localhost:8787
 
 ## Writing Evals
 
-Evals are Python scripts. Edit `evals/test_chat.py`:
+Evals are Python scripts. Edit `boba-evals/test_chat.py`:
 
 ```python
 from simboba import Boba
@@ -96,7 +97,7 @@ boba.run(agent, dataset="my-dataset")  # Uses dataset created above
 
 ## Test Fixtures (setup.py)
 
-Edit `evals/setup.py` to create test data your agent needs:
+Edit `boba-evals/setup.py` to create test data your agent needs:
 
 ```python
 def get_context():
@@ -128,7 +129,7 @@ GEMINI_API_KEY=...             # For Gemini models
 
 ```
 your-project/
-├── evals/
+├── boba-evals/
 │   ├── setup.py        # Test fixtures
 │   ├── test_chat.py    # Your eval script
 │   ├── .boba.yaml      # Config (docker vs local)
