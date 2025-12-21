@@ -25,12 +25,32 @@ class BobaConfig:
     service: Optional[str] = None  # Docker service name
 
 
+def find_boba_evals_dir() -> Optional[Path]:
+    """Find boba-evals/ folder by searching current dir and parents (like git)."""
+    current = Path.cwd().resolve()
+
+    # Search current directory and parents
+    while True:
+        candidate = current / "boba-evals"
+        if candidate.is_dir():
+            return candidate
+
+        parent = current.parent
+        if parent == current:  # Reached root
+            break
+        current = parent
+
+    return None
+
+
 def find_config() -> Optional[Path]:
     """Find .boba.yaml in boba-evals/ folder or current directory."""
-    # Check boba-evals/ folder first
-    evals_config = Path("boba-evals") / CONFIG_FILENAME
-    if evals_config.exists():
-        return evals_config
+    # Search for boba-evals/ in current dir and parents
+    evals_dir = find_boba_evals_dir()
+    if evals_dir:
+        config_path = evals_dir / CONFIG_FILENAME
+        if config_path.exists():
+            return config_path
 
     # Check current directory
     cwd_config = Path(CONFIG_FILENAME)

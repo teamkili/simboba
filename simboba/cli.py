@@ -177,9 +177,9 @@ def serve(host: str, port: int, reload: bool):
 @main.command()
 def setup():
     """Print basic setup instructions (use 'boba magic' for guided AI setup)."""
-    from pathlib import Path
+    from simboba.config import find_boba_evals_dir
 
-    if not Path("boba-evals").is_dir():
+    if not find_boba_evals_dir():
         click.echo("No boba-evals/ folder found. Run 'boba init' first.", err=True)
         raise SystemExit(1)
 
@@ -214,9 +214,10 @@ After you're done, I'll run: boba run'''
 @main.command()
 def magic():
     """Print a detailed prompt for AI coding tools to set up your evals."""
-    from pathlib import Path
+    from simboba.config import find_boba_evals_dir
 
-    if not Path("boba-evals").is_dir():
+    evals_dir = find_boba_evals_dir()
+    if not evals_dir:
         click.echo("No boba-evals/ folder found. Run 'boba init' first.", err=True)
         raise SystemExit(1)
 
@@ -348,10 +349,16 @@ def run(script: str):
     import subprocess
     import sys
     from pathlib import Path
-    from simboba.config import load_config, inside_container
+    from simboba.config import load_config, inside_container, find_boba_evals_dir
+
+    # Find boba-evals directory
+    evals_dir = find_boba_evals_dir()
+    if not evals_dir:
+        click.echo("No boba-evals/ folder found. Run 'boba init' first.", err=True)
+        raise SystemExit(1)
 
     # Resolve script path
-    script_path = Path("boba-evals") / script
+    script_path = evals_dir / script
     if not script_path.exists():
         # Maybe they passed a full path
         script_path = Path(script)
@@ -367,8 +374,10 @@ def run(script: str):
         cmd = [sys.executable, str(script_path)]
     else:
         # Docker mode - exec into container
+        # Use relative path for Docker (container has different filesystem)
         service = config.service or "api"
-        cmd = ["docker", "compose", "exec", service, "python", str(script_path)]
+        relative_script = f"boba-evals/{script}"
+        cmd = ["docker", "compose", "exec", service, "python", relative_script]
 
     click.echo(f"Running: {' '.join(cmd)}")
     click.echo("")

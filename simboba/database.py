@@ -5,16 +5,36 @@ from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-DEFAULT_DB_PATH = Path.cwd() / "boba-evals" / "simboba.db"
-
 
 class Base(DeclarativeBase):
     pass
 
 
+def get_default_db_path() -> Path:
+    """Get the default database path, searching for boba-evals/ directory."""
+    from simboba.config import find_boba_evals_dir
+
+    evals_dir = find_boba_evals_dir()
+    if evals_dir:
+        return evals_dir / "simboba.db"
+
+    # Fallback: check if we're already inside a boba-evals folder
+    cwd = Path.cwd()
+    if cwd.name == "boba-evals":
+        return cwd / "simboba.db"
+
+    # Last resort: create in cwd (for tests or edge cases)
+    return cwd / "simboba.db"
+
+
 def get_database_url(db_path: Path | None = None) -> str:
     """Get the SQLite database URL."""
-    path = db_path or Path(os.environ.get("SIMBOBA_DB_PATH", DEFAULT_DB_PATH))
+    if db_path:
+        path = db_path
+    elif os.environ.get("SIMBOBA_DB_PATH"):
+        path = Path(os.environ["SIMBOBA_DB_PATH"])
+    else:
+        path = get_default_db_path()
     # Ensure parent directory exists
     path.parent.mkdir(parents=True, exist_ok=True)
     # Ensure .gitignore exists to ignore db files
