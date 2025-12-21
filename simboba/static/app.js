@@ -539,20 +539,23 @@ function renderRunsPage() {
 }
 
 function renderRunListItem(r) {
-    const dataset = datasets.find(d => d.id === r.dataset_id);
-    const datasetName = dataset ? dataset.name : `Dataset #${r.dataset_id}`;
+    const dataset = r.dataset_id ? datasets.find(d => d.id === r.dataset_id) : null;
+    // For ad-hoc evals, show eval name; for dataset runs, show dataset name
+    const title = dataset ? dataset.name : (r.eval_name || 'Single Eval');
     const rateClass = r.score >= 80 ? 'rate-high' : (r.score >= 60 ? 'rate-mid' : 'rate-low');
     const isRunning = r.status === 'running';
+    // For ad-hoc evals, don't show "X cases" if it's just 1
+    const casesLabel = r.total === 1 && !r.dataset_id ? '1 eval' : `${r.total} cases`;
 
     return `
         <div class="run-list-item" onclick="openRunSidebar(${r.id})" id="run-item-${r.id}">
             <div class="run-list-info">
                 <div class="run-list-name">
                     ${isRunning ? '<span class="status-dot running" style="margin-right: 6px;"></span>' : ''}
-                    ${escapeHtml(datasetName)}
+                    ${escapeHtml(title)}
                     ${isRunning ? ' <span style="color: var(--taro);">Running</span>' : ''}
                 </div>
-                <div class="run-list-sub">${relativeTime(r.started_at)} · ${r.total} cases · ${escapeHtml(r.eval_name)}</div>
+                <div class="run-list-sub">${relativeTime(r.started_at)} · ${casesLabel}${dataset ? ` · ${escapeHtml(r.eval_name)}` : ''}</div>
             </div>
             <span class="run-list-score ${rateClass}">
                 ${isRunning ? '—' : (r.score !== null ? r.score.toFixed(0) + '%' : '—')}
@@ -597,8 +600,9 @@ async function openRunSidebar(runId) {
 }
 
 function renderRunSidebarContent(r) {
-    const dataset = datasets.find(d => d.id === r.dataset_id);
-    const datasetName = dataset ? dataset.name : `Dataset #${r.dataset_id}`;
+    const dataset = r.dataset_id ? datasets.find(d => d.id === r.dataset_id) : null;
+    // For ad-hoc evals, show the eval name; for dataset runs, show dataset name
+    const title = dataset ? dataset.name : (r.eval_name || 'Single Eval');
     const results = r.results || [];
 
     const duration = r.completed_at
@@ -606,7 +610,7 @@ function renderRunSidebarContent(r) {
         : 'In progress';
 
     // Update title
-    document.getElementById('sidebar-run-title').textContent = datasetName;
+    document.getElementById('sidebar-run-title').textContent = title;
 
     // Update content
     const content = document.getElementById('sidebar-run-content');
@@ -654,7 +658,18 @@ function renderRunSidebarContent(r) {
 
 function renderSidebarResultItem(res) {
     const c = res.case || {};
-    const name = c.name || `Case #${res.case_id}`;
+    // For ad-hoc evals (no case), show "Eval" or use the input message
+    let name;
+    if (res.case_id) {
+        name = c.name || `Case #${res.case_id}`;
+    } else {
+        // Ad-hoc eval - try to get a meaningful name from inputs
+        const inputs = res.inputs || [];
+        const firstMessage = inputs[0]?.message || '';
+        name = firstMessage.length > 30 ? firstMessage.substring(0, 30) + '...' : (firstMessage || 'Eval');
+    }
+    // For ad-hoc evals, expected_outcome is stored on the result, not the case
+    const expectedOutcome = c.expected_outcome || res.expected_outcome || '—';
 
     return `
         <div class="result-list-item" id="sidebar-result-${res.id}">
@@ -671,7 +686,7 @@ function renderSidebarResultItem(res) {
             <div class="result-list-detail">
                 <div style="margin-bottom: 12px;">
                     <div class="detail-box-label">Expected</div>
-                    <div style="font-size: 13px;">${escapeHtml(c.expected_outcome || '—')}</div>
+                    <div style="font-size: 13px;">${escapeHtml(expectedOutcome)}</div>
                 </div>
                 <div style="margin-bottom: 12px;">
                     <div class="detail-box-label">Actual</div>
@@ -1183,12 +1198,12 @@ function setupDragAndDrop() {
 
 // Settings Page
 const AVAILABLE_MODELS = [
-    { id: 'gemini/gemini-3-flash-preview', name: 'Gemini 3 Flash', provider: 'Google' },
-    { id: 'gemini/gemini-3-pro-preview', name: 'Gemini 3 Pro', provider: 'Google' },
-    { id: 'gpt-5.2', name: 'GPT-5.2', provider: 'OpenAI' },
-    { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', provider: 'Anthropic' },
-    { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', provider: 'Anthropic' },
-    { id: 'claude-opus-4-5-20251101', name: 'Claude Opus 4.5', provider: 'Anthropic' },
+    { id: 'anthropic/claude-3-5-haiku-latest', name: 'Claude 3.5 Haiku', provider: 'Anthropic' },
+    { id: 'anthropic/claude-sonnet-4-20250514', name: 'Claude Sonnet 4', provider: 'Anthropic' },
+    { id: 'anthropic/claude-opus-4-20250514', name: 'Claude Opus 4', provider: 'Anthropic' },
+    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' },
+    { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
+    { id: 'gemini/gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'Google' },
 ];
 
 function renderSettingsPage() {
@@ -1226,9 +1241,9 @@ function renderSettingsPage() {
                 <p class="text-secondary" style="font-size: 13px; margin: 0;">
                     Set the appropriate environment variable for your provider before starting simboba:
                 </p>
-                <pre style="margin: 12px 0 0; padding: 12px; background: var(--zinc-900); color: var(--zinc-100); border-radius: 4px; font-size: 12px; overflow-x: auto;">export GEMINI_API_KEY=...
+                <pre style="margin: 12px 0 0; padding: 12px; background: var(--zinc-900); color: var(--zinc-100); border-radius: 4px; font-size: 12px; overflow-x: auto;">export ANTHROPIC_API_KEY=sk-ant-...
 export OPENAI_API_KEY=sk-...
-export ANTHROPIC_API_KEY=sk-ant-...</pre>
+export GEMINI_API_KEY=...</pre>
             </div>
         </div>
     `;

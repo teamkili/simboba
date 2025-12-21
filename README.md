@@ -23,7 +23,7 @@ pip install simboba
 ```bash
 boba init          # Create evals/ folder with templates
 # Edit evals/setup.py and evals/test_chat.py (or run `boba setup` for AI help)
-python evals/test_chat.py   # Run your evals
+boba run           # Run your evals (handles Docker automatically)
 boba serve         # View results at http://localhost:8787
 ```
 
@@ -33,6 +33,7 @@ boba serve         # View results at http://localhost:8787
 |---------|-------------|
 | `boba init` | Create `evals/` folder with starter templates |
 | `boba setup` | Print AI prompt to help configure your eval scripts |
+| `boba run [script]` | Run eval script (default: `test_chat.py`). Handles Docker automatically |
 | `boba serve` | Start web UI to view results |
 | `boba datasets` | List all datasets |
 | `boba generate "description"` | Generate a dataset from a description |
@@ -113,13 +114,15 @@ def cleanup():
 
 ## Environment Variables
 
-Boba loads `.env` automatically. Set your LLM API key for judging:
+Boba loads `.env` automatically. Set your LLM API key for judging (Claude 3.5 Haiku is the default):
 
 ```bash
-ANTHROPIC_API_KEY=...   # Claude (default)
-OPENAI_API_KEY=...      # OpenAI
-GEMINI_API_KEY=...      # Gemini
+ANTHROPIC_API_KEY=sk-ant-...   # Required for default model (Claude)
+OPENAI_API_KEY=sk-...          # For OpenAI models
+GEMINI_API_KEY=...             # For Gemini models
 ```
+
+> **Note:** Without an API key, boba falls back to a simple keyword-matching judge which is less accurate.
 
 ## Project Structure
 

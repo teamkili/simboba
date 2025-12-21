@@ -31,13 +31,26 @@ class Boba:
     def _get_session(self):
         return self._session_factory()
 
-    def _get_judge(self, db):
-        """Get the judge function."""
+    def _get_judge(self, db, warn: bool = True):
+        """Get the judge function.
+
+        Args:
+            db: Database session
+            warn: Whether to print a warning if falling back to simple judge
+
+        Returns:
+            Judge function
+        """
         try:
             from simboba.judge import create_judge
             model = Settings.get(db, "model")
             return create_judge(model=model)
         except Exception:
+            if warn and not getattr(self, '_warned_simple_judge', False):
+                print("\n⚠️  No API key found. Using simple keyword-matching judge.")
+                print("   For better results, set ANTHROPIC_API_KEY in your environment.")
+                print("   See: https://console.anthropic.com/\n")
+                self._warned_simple_judge = True
             from simboba.judge import create_simple_judge
             return create_simple_judge()
 

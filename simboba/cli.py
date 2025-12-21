@@ -31,8 +31,8 @@ def _maybe_exec_in_docker():
     """Check if we should exec into Docker, called before Click processing."""
     import sys
 
-    # Don't redirect 'init' or 'setup' command - they need to run locally
-    if len(sys.argv) > 1 and sys.argv[1] in ("init", "setup"):
+    # Don't redirect these commands - they need to run locally or handle Docker themselves
+    if len(sys.argv) > 1 and sys.argv[1] in ("init", "setup", "run"):
         return
 
     from simboba.config import maybe_exec_in_docker
@@ -146,13 +146,13 @@ def init(use_docker: bool, use_local: bool):
         click.echo("  3. docker compose build && docker compose up -d")
         click.echo("  4. Edit evals/setup.py and evals/test_chat.py")
         click.echo("     (or run 'boba setup' for AI assistance)")
-        click.echo("  5. python evals/test_chat.py")
+        click.echo("  5. boba run")
         click.echo("  6. boba serve")
     else:
         click.echo("Next steps:")
         click.echo("  1. Edit evals/setup.py and evals/test_chat.py")
         click.echo("     (or run 'boba setup' for AI assistance)")
-        click.echo("  2. python evals/test_chat.py")
+        click.echo("  2. boba run")
         click.echo("  3. boba serve")
 
 
@@ -217,6 +217,61 @@ After you're done, I'll run: python evals/test_chat.py'''
     click.echo(click.style("-" * 60, fg="bright_black"))
     click.echo("")
     click.echo("The AI will analyze your codebase and update the eval scripts.")
+
+
+@main.command()
+@click.argument("script", default="test_chat.py")
+def run(script: str):
+    """Run an eval script.
+
+    Automatically handles Docker vs local execution based on your config.
+
+    \b
+    Examples:
+        boba run                    # Runs evals/test_chat.py
+        boba run test_chat.py       # Same as above
+        boba run my_eval.py         # Runs evals/my_eval.py
+    """
+    import subprocess
+    import sys
+    from pathlib import Path
+    from simboba.config import load_config, inside_container
+
+    # Resolve script path
+    script_path = Path("evals") / script
+    if not script_path.exists():
+        # Maybe they passed a full path
+        script_path = Path(script)
+        if not script_path.exists():
+            click.echo(f"Script not found: {script}", err=True)
+            click.echo("Make sure the file exists in evals/ folder.")
+            raise SystemExit(1)
+
+    config = load_config()
+
+    # If local or already in container, just run python
+    if config.runtime == "local" or inside_container():
+        cmd = [sys.executable, str(script_path)]
+    else:
+        # Docker mode - exec into container
+        service = config.service or "api"
+        cmd = ["docker", "compose", "exec", service, "python", str(script_path)]
+
+    click.echo(f"Running: {' '.join(cmd)}")
+    click.echo("")
+
+    try:
+        result = subprocess.run(cmd)
+        sys.exit(result.returncode)
+    except FileNotFoundError:
+        if "docker" in cmd[0]:
+            click.echo("Docker not found. Is Docker installed and running?", err=True)
+        else:
+            click.echo("Python not found.", err=True)
+        raise SystemExit(1)
+    except KeyboardInterrupt:
+        click.echo("\nInterrupted.")
+        raise SystemExit(130)
 
 
 @main.command()

@@ -10,19 +10,19 @@ class LLMClient:
     """Wrapper for LLM calls using LiteLLM.
 
     Supports any model that LiteLLM supports:
-    - OpenAI: gpt-4, gpt-4o, gpt-4o-mini, gpt-3.5-turbo
-    - Anthropic: claude-3-opus-20240229, claude-3-sonnet-20240229, claude-sonnet-4-20250514
-    - Google: gemini/gemini-pro
+    - Anthropic: anthropic/claude-3-5-haiku-latest, anthropic/claude-sonnet-4-20250514
+    - OpenAI: gpt-4, gpt-4o, gpt-4o-mini
+    - Google: gemini/gemini-pro, gemini/gemini-2.0-flash
     - Local: ollama/llama2, ollama/mistral
     - And many more: https://docs.litellm.ai/docs/providers
 
     API keys are read from environment variables automatically:
-    - OPENAI_API_KEY for OpenAI models
     - ANTHROPIC_API_KEY for Anthropic models
-    - etc.
+    - OPENAI_API_KEY for OpenAI models
+    - GEMINI_API_KEY for Google models
     """
 
-    DEFAULT_MODEL = "gemini/gemini-3-flash-preview"
+    DEFAULT_MODEL = "anthropic/claude-3-5-haiku-latest"
 
     def __init__(self, model: Optional[str] = None):
         """Initialize the LLM client.
