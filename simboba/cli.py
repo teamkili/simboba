@@ -40,7 +40,7 @@ def _maybe_exec_in_docker():
 
 
 @click.group()
-@click.version_option(version="0.1.4")
+@click.version_option(version="0.1.5")
 def main():
     """
     \b
@@ -125,12 +125,12 @@ def init(use_docker: bool, use_local: bool):
     if samples_dir.exists():
         # Copy setup.py
         shutil.copy(samples_dir / "setup.py", evals_dir / "setup.py")
-        # Copy test_chat.py
-        shutil.copy(samples_dir / "test_chat.py", evals_dir / "test_chat.py")
+        # Copy test.py
+        shutil.copy(samples_dir / "test.py", evals_dir / "test.py")
     else:
         # Fallback if samples not found
         (evals_dir / "setup.py").write_text("# Setup file - see boba docs\ndef get_context():\n    return {}\n\ndef cleanup():\n    pass\n")
-        (evals_dir / "test_chat.py").write_text("# Eval file - see boba docs\nfrom simboba import Boba\n\nboba = Boba()\n")
+        (evals_dir / "test.py").write_text("# Eval file - see boba docs\nfrom simboba import Boba\n\nboba = Boba()\n")
 
     # Create settings.json with defaults
     import json
@@ -151,7 +151,7 @@ runs/
     click.echo("  - runs/          (ephemeral run history)")
     click.echo("  - files/         (uploaded attachments)")
     click.echo("  - setup.py       (shared test fixtures)")
-    click.echo("  - test_chat.py   (example eval script)")
+    click.echo("  - test.py        (example eval script)")
     click.echo("")
 
     if runtime == "docker-compose":
@@ -210,7 +210,7 @@ Please analyze this codebase and update the files in boba-evals/:
    - Update get_context() to create test data needed for the agent
    - Return a dict with IDs and tokens the agent will need
 
-2. **boba-evals/test_chat.py** - Connect the agent:
+2. **boba-evals/test.py** - Connect the agent:
    - Find how to call the agent/API in this codebase
    - Update the agent() function to call it with the test context
    - The function receives a message string and should return a response string
@@ -272,7 +272,7 @@ def cleanup():
     pass
 ```
 
-### 2. boba-evals/test_chat.py - Connect Your Agent
+### 2. boba-evals/test.py - Connect Your Agent
 
 This file runs the actual evals. You need to update the `agent()` function to call your agent/API.
 
@@ -352,20 +352,23 @@ This will execute the eval script and track results. Then run `boba serve` to vi
 
 
 @main.command()
-@click.argument("script", default="test_chat.py")
-def run(script: str):
+@click.argument("script", default="test.py")
+@click.option("--no-metadata", is_flag=True, help="Skip metadata comparison in judge (tool_calls, citations)")
+def run(script: str, no_metadata: bool):
     """Run an eval script.
 
     Automatically handles Docker vs local execution based on your config.
 
     \b
     Examples:
-        boba run                    # Runs boba-evals/test_chat.py
-        boba run test_chat.py       # Same as above
+        boba run                    # Runs boba-evals/test.py
+        boba run test.py            # Same as above
         boba run my_eval.py         # Runs boba-evals/my_eval.py
+        boba run --no-metadata      # Skip metadata comparison
     """
     import subprocess
     import sys
+    import os
     from pathlib import Path
     from simboba.config import load_config, inside_container, find_boba_evals_dir
 
@@ -398,10 +401,17 @@ def run(script: str):
         cmd = ["docker", "compose", "exec", service, "python", relative_script]
 
     click.echo(f"Running: {' '.join(cmd)}")
+    if no_metadata:
+        click.echo("(metadata comparison disabled)")
     click.echo("")
 
+    # Set environment variable for Boba class to read
+    env = os.environ.copy()
+    if no_metadata:
+        env["BOBA_SKIP_METADATA"] = "1"
+
     try:
-        result = subprocess.run(cmd)
+        result = subprocess.run(cmd, env=env)
         sys.exit(result.returncode)
     except FileNotFoundError:
         if "docker" in cmd[0]:
@@ -500,7 +510,7 @@ def generate(description: str):
         click.echo(f"  {i}. {case_name}")
 
     click.echo("")
-    click.echo("Next: Update boba-evals/test_chat.py to use this dataset:")
+    click.echo("Next: Update boba-evals/test.py to use this dataset:")
     click.echo(f'  boba.run(agent, dataset="{name}")')
 
 

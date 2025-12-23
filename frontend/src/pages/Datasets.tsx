@@ -566,20 +566,15 @@ function CaseSidebar({
             <div className="p-4 bg-zinc-50 border border-zinc-200 text-sm leading-relaxed">
               {caseData.expected_outcome}
             </div>
-            {caseData.expected_source && (
-              <>
-                <div className="mt-3 inline-flex items-center gap-2 bg-taro/10 px-2.5 py-1 text-xs">
-                  <span className="font-mono">{caseData.expected_source.file}</span>
-                  <span className="bg-taro text-white px-1.5 py-0.5 text-xs font-medium">
-                    p. {caseData.expected_source.page}
-                  </span>
+            {caseData.expected_metadata && Object.keys(caseData.expected_metadata).length > 0 && (
+              <div className="mt-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-zinc-400 mb-2">
+                  Expected Metadata
                 </div>
-                {caseData.expected_source.excerpt && (
-                  <div className="mt-2 text-sm italic text-zinc-500">
-                    "{caseData.expected_source.excerpt}"
-                  </div>
-                )}
-              </>
+                <pre className="p-3 bg-zinc-100 border border-zinc-200 text-xs font-mono overflow-x-auto">
+                  {JSON.stringify(caseData.expected_metadata, null, 2)}
+                </pre>
+              </div>
             )}
           </div>
         </div>
@@ -702,7 +697,7 @@ function CaseModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{editingCase ? 'Edit Case' : 'Add Case'}</DialogTitle>
         </DialogHeader>
@@ -756,7 +751,7 @@ function CaseModal({
             <textarea
               value={outcome}
               onChange={(e) => setOutcome(e.target.value)}
-              rows={3}
+              rows={6}
               className="w-full px-3 py-2 border border-zinc-200 bg-white text-sm focus:outline-none focus:ring-1 focus:ring-taro resize-y"
             />
           </div>

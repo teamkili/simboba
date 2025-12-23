@@ -14,13 +14,26 @@ def create_judge(model: Optional[str] = None):
                If not specified, uses LLMClient's default.
 
     Returns:
-        A function(inputs, expected, actual) -> (passed: bool, reasoning: str)
+        A function(inputs, expected_outcome, actual_output, expected_metadata, actual_metadata)
+        -> (passed: bool, reasoning: str)
     """
     client = LLMClient(model=model)
 
-    def judge(inputs: list, expected_outcome: str, actual_output: str) -> Tuple[bool, str]:
+    def judge(
+        inputs: list,
+        expected_outcome: str,
+        actual_output: str,
+        expected_metadata: Optional[dict] = None,
+        actual_metadata: Optional[dict] = None,
+    ) -> Tuple[bool, str]:
         """Judge whether the actual output meets the expected outcome."""
-        prompt = build_judge_prompt(inputs, expected_outcome, actual_output)
+        prompt = build_judge_prompt(
+            inputs,
+            expected_outcome,
+            actual_output,
+            expected_metadata=expected_metadata,
+            actual_metadata=actual_metadata,
+        )
 
         try:
             result = client.generate_json(prompt, max_tokens=1024)
@@ -40,9 +53,16 @@ def create_simple_judge():
     """Create a simple string-matching judge for testing without API calls.
 
     Returns:
-        A function(inputs, expected, actual) -> (passed: bool, reasoning: str)
+        A function(inputs, expected_outcome, actual_output, expected_metadata, actual_metadata)
+        -> (passed: bool, reasoning: str)
     """
-    def judge(inputs: list, expected_outcome: str, actual_output: str) -> Tuple[bool, str]:
+    def judge(
+        inputs: list,
+        expected_outcome: str,
+        actual_output: str,
+        expected_metadata: Optional[dict] = None,
+        actual_metadata: Optional[dict] = None,
+    ) -> Tuple[bool, str]:
         """Simple judge that checks if expected keywords are in the output."""
         # Extract key terms from expected outcome
         expected_lower = expected_outcome.lower()

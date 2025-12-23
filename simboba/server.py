@@ -40,13 +40,8 @@ class MessageInput(BaseModel):
     role: str
     message: str
     attachments: list = []
+    metadata: Optional[dict] = None  # For tool_calls, citations, etc.
     created_at: Optional[str] = None
-
-
-class ExpectedSource(BaseModel):
-    file: str
-    page: int
-    excerpt: Optional[str] = None
 
 
 class CaseCreate(BaseModel):
@@ -54,14 +49,14 @@ class CaseCreate(BaseModel):
     name: Optional[str] = None
     inputs: list[MessageInput]
     expected_outcome: str
-    expected_source: Optional[ExpectedSource] = None
+    expected_metadata: Optional[dict] = None  # Expected citations, tool_calls, etc.
 
 
 class CaseUpdate(BaseModel):
     name: Optional[str] = None
     inputs: Optional[list[MessageInput]] = None
     expected_outcome: Optional[str] = None
-    expected_source: Optional[ExpectedSource] = None
+    expected_metadata: Optional[dict] = None
 
 
 class BulkCreateCases(BaseModel):
@@ -279,7 +274,7 @@ def create_app() -> FastAPI:
             "name": data.name,
             "inputs": [msg.model_dump() for msg in data.inputs],
             "expected_outcome": data.expected_outcome,
-            "expected_source": data.expected_source.model_dump() if data.expected_source else None,
+            "expected_metadata": data.expected_metadata,
         }
         result = storage.add_case(dataset["name"], case)
         logger.info(f"Created case '{data.name}' in dataset '{dataset['name']}'")
@@ -310,8 +305,8 @@ def create_app() -> FastAPI:
             updates["inputs"] = [msg.model_dump() for msg in data.inputs]
         if data.expected_outcome is not None:
             updates["expected_outcome"] = data.expected_outcome
-        if data.expected_source is not None:
-            updates["expected_source"] = data.expected_source.model_dump()
+        if data.expected_metadata is not None:
+            updates["expected_metadata"] = data.expected_metadata
 
         case = storage.update_case(dataset["name"], case_id, updates)
         if not case:

@@ -12,14 +12,8 @@ class MessageInput(BaseModel):
     role: str
     message: str
     attachments: list[dict] = Field(default_factory=list)
+    metadata: Optional[dict] = None  # For tool_calls, citations, etc.
     created_at: Optional[str] = None
-
-
-class ExpectedSource(BaseModel):
-    """Expected source reference for verification."""
-    file: str
-    page: int
-    excerpt: Optional[str] = None
 
 
 # --- Case Models ---
@@ -29,7 +23,7 @@ class CaseCreate(BaseModel):
     name: Optional[str] = None
     inputs: list[MessageInput]
     expected_outcome: str
-    expected_source: Optional[ExpectedSource] = None
+    expected_metadata: Optional[dict] = None  # Expected citations, tool_calls, etc.
 
 
 class CaseUpdate(BaseModel):
@@ -37,7 +31,7 @@ class CaseUpdate(BaseModel):
     name: Optional[str] = None
     inputs: Optional[list[MessageInput]] = None
     expected_outcome: Optional[str] = None
-    expected_source: Optional[ExpectedSource] = None
+    expected_metadata: Optional[dict] = None
 
 
 class Case(BaseModel):
@@ -46,7 +40,7 @@ class Case(BaseModel):
     name: Optional[str] = None
     inputs: list[dict] = Field(default_factory=list)
     expected_outcome: str = ""
-    expected_source: Optional[dict] = None
+    expected_metadata: Optional[dict] = None
     created_at: str
     updated_at: str
     dataset_name: Optional[str] = None

@@ -104,13 +104,17 @@ result = boba.run(
     "id": "abc123",  # Stable ID for baseline comparison
     "name": "Test greeting",
     "inputs": [
-        {"role": "user", "message": "...", "attachments": [{"file": "doc.pdf"}]}
+        {
+            "role": "user",
+            "message": "...",
+            "attachments": [{"file": "doc.pdf"}],
+            "metadata": {...}  # optional - for tool_calls, citations, etc.
+        }
     ],
     "expected_outcome": "Agent should...",
-    "expected_source": {        # optional - for verification
-        "file": "doc.pdf",
-        "page": 12,
-        "excerpt": "..."
+    "expected_metadata": {      # optional - expected citations, tool_calls, etc.
+        "citations": [{"file": "doc.pdf", "page": 12}],
+        "tool_calls": ["get_orders"]
     }
 }
 ```

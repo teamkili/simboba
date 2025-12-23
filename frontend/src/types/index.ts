@@ -3,14 +3,8 @@ export interface MessageInput {
   role: 'user' | 'assistant' | 'system'
   message: string
   attachments?: Array<{ file: string }>
+  metadata?: Record<string, unknown>  // For tool_calls, citations, etc.
   created_at?: string
-}
-
-// Expected source reference
-export interface ExpectedSource {
-  file: string
-  page: number
-  excerpt?: string
 }
 
 // Eval case
@@ -19,7 +13,7 @@ export interface Case {
   name?: string
   inputs: MessageInput[]
   expected_outcome: string
-  expected_source?: ExpectedSource
+  expected_metadata?: Record<string, unknown>  // Expected citations, tool_calls, etc.
   created_at: string
   updated_at: string
   dataset_name?: string
@@ -105,12 +99,12 @@ export interface CreateCaseRequest {
   name?: string
   inputs: MessageInput[]
   expected_outcome: string
-  expected_source?: ExpectedSource
+  expected_metadata?: Record<string, unknown>
 }
 
 export interface UpdateCaseRequest {
   name?: string
   inputs?: MessageInput[]
   expected_outcome?: string
-  expected_source?: ExpectedSource
+  expected_metadata?: Record<string, unknown>
 }

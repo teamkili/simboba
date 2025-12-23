@@ -13,6 +13,7 @@ Usage:
     boba.run(agent_fn, dataset="my-dataset")
 """
 
+import os
 from datetime import datetime
 from typing import Callable, Optional
 
@@ -22,9 +23,18 @@ from simboba import storage
 class Boba:
     """Simple eval tracking."""
 
-    def __init__(self):
-        """Initialize Boba."""
+    def __init__(self, skip_metadata: bool = None):
+        """Initialize Boba.
+
+        Args:
+            skip_metadata: If True, don't pass metadata to judge.
+                          Defaults to BOBA_SKIP_METADATA env var.
+        """
         self._warned_simple_judge = False
+        # Check env var if not explicitly set
+        if skip_metadata is None:
+            skip_metadata = os.environ.get("BOBA_SKIP_METADATA", "").lower() in ("1", "true", "yes")
+        self._skip_metadata = skip_metadata
 
     def _get_judge(self, warn: bool = True):
         """Get the judge function.
@@ -57,6 +67,8 @@ class Boba:
         output: str,
         expected: str,
         name: Optional[str] = None,
+        expected_metadata: Optional[dict] = None,
+        actual_metadata: Optional[dict] = None,
     ) -> dict:
         """
         Evaluate a single input/output pair.
@@ -66,6 +78,8 @@ class Boba:
             output: The actual output from your agent
             expected: What the output should do/contain
             name: Optional name for this eval
+            expected_metadata: Expected metadata (citations, tool_calls, etc.)
+            actual_metadata: Actual metadata from the agent response
 
         Returns:
             dict with: passed, reasoning, run_id
@@ -86,7 +100,11 @@ class Boba:
         # Judge the result
         judge_fn = self._get_judge()
         inputs = [{"role": "user", "message": input}]
-        passed, reasoning = judge_fn(inputs, expected, output)
+        passed, reasoning = judge_fn(
+            inputs, expected, output,
+            expected_metadata=None if self._skip_metadata else expected_metadata,
+            actual_metadata=None if self._skip_metadata else actual_metadata,
+        )
 
         # Create result
         case_id = storage.generate_id()
@@ -192,7 +210,13 @@ class Boba:
                 passed = False
                 reasoning = f"Error: {error_message}"
             else:
-                passed, reasoning = judge_fn(inputs, case.get("expected_outcome", ""), output)
+                expected_metadata = None if self._skip_metadata else case.get("expected_metadata")
+                passed, reasoning = judge_fn(
+                    inputs,
+                    case.get("expected_outcome", ""),
+                    output,
+                    expected_metadata=expected_metadata,
+                )
 
             # Create result
             run["results"][case_id] = {
