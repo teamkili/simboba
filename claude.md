@@ -302,79 +302,54 @@ service: api
 
 Set `BOBA_NO_DOCKER=1` to bypass.
 
-## Complete Minimal Example
+## Quickstart Example
 
-End-to-end walkthrough from dataset creation to viewing results.
+Copy-paste example with all files shown together.
 
-### 1. Create dataset file
-
-```bash
-# boba-evals/datasets/greeting-test.json
-```
+**1. Dataset** — `boba-evals/datasets/my-first-eval.json`:
 
 ```json
 {
-  "id": "greeting-test",
-  "name": "greeting-test",
-  "description": "Test greeting responses",
+  "name": "my-first-eval",
   "cases": [
     {
-      "id": "greet-1",
-      "name": "Basic hello",
-      "inputs": [{"role": "user", "message": "Hello!"}],
-      "expected_outcome": "Agent should respond with a friendly greeting"
-    },
-    {
-      "id": "greet-2",
-      "name": "Good morning",
-      "inputs": [{"role": "user", "message": "Good morning, how are you?"}],
-      "expected_outcome": "Agent should greet back and respond about wellbeing"
+      "name": "Basic greeting",
+      "inputs": [{"role": "user", "message": "Hello"}],
+      "expected_outcome": "Friendly greeting response"
     }
-  ],
-  "created_at": "2024-01-15T10:00:00Z",
-  "updated_at": "2024-01-15T10:00:00Z",
-  "case_count": 2
+  ]
 }
 ```
 
-### 2. Create eval script
+**2. Eval script** — `boba-evals/test.py`:
 
 ```python
-# boba-evals/test.py
-from simboba import Boba, AgentResponse
+from simboba import Boba
 
 boba = Boba()
 
-def my_agent(message: str) -> str:
-    """Simple echo agent for demo - replace with your actual agent."""
-    return f"Hello! You said: {message}"
+def agent(message: str) -> str:
+    return "Hi there! How can I help?"
 
 if __name__ == "__main__":
-    result = boba.run(agent=my_agent, dataset="greeting-test")
-    print(f"\nScore: {result['score']:.1f}%")
-    print(f"Run ID: {result['run_id']}")
+    result = boba.run(agent, dataset="my-first-eval")
+    print(f"{result['passed']}/{result['total']} passed")
 ```
 
-### 3. Run and view
+**3. Run**:
 
 ```bash
-# Set API key for LLM judge
-export ANTHROPIC_API_KEY=sk-ant-...
-
-# Run evals
-boba run
-# Output:
-#   + Basic hello
-#   + Good morning
-# Results: 2/2 passed (100.0%)
-
-# Save as baseline
-boba baseline
-
-# View in web UI
-boba serve
-# Open http://localhost:8787
+ANTHROPIC_API_KEY=sk-ant-... boba run
 ```
+
+**4. Output**:
+
+```
+  + Basic greeting
+Results: 1/1 passed (100.0%)
+```
+
+Note: `id`, `created_at`, `updated_at`, `case_count` are auto-generated if omitted.
 
 ## Development
 

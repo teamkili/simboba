@@ -20,7 +20,56 @@ Lightweight tool to manage datasets and evals for your AI product. Supports LLM 
 pip install simboba
 ```
 
-## Quick Start
+## Quickstart
+
+**1. Dataset** — Create `boba-evals/datasets/my-first-eval.json`:
+
+```json
+{
+  "name": "my-first-eval",
+  "cases": [
+    {
+      "name": "Basic greeting",
+      "inputs": [{"role": "user", "message": "Hello"}],
+      "expected_outcome": "Friendly greeting response"
+    }
+  ]
+}
+```
+
+**2. Eval script** — Create `boba-evals/test.py`:
+
+```python
+from simboba import Boba
+
+boba = Boba()
+
+def agent(message: str) -> str:
+    return "Hi there! How can I help?"
+
+if __name__ == "__main__":
+    result = boba.run(agent, dataset="my-first-eval")
+    print(f"{result['passed']}/{result['total']} passed")
+```
+
+**3. Run**:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-... boba run
+```
+
+**4. Output**:
+
+```
+  + Basic greeting
+Results: 1/1 passed (100.0%)
+```
+
+That's it! Run `boba serve` to view results in the web UI.
+
+---
+
+## Quick Reference
 
 ```bash
 boba init          # Create boba-evals/ folder with templates
@@ -306,57 +355,6 @@ your-project/
 │   ├── settings.json       # Configuration
 │   └── .boba.yaml          # Runtime config (docker vs local)
 └── ...
-```
-
-## Complete Example
-
-End-to-end example you can copy and run:
-
-**1. Create dataset** (`boba-evals/datasets/hello-test.json`):
-
-```json
-{
-  "id": "hello-test",
-  "name": "hello-test",
-  "cases": [
-    {
-      "id": "test-1",
-      "name": "Basic greeting",
-      "inputs": [{"role": "user", "message": "Hello!"}],
-      "expected_outcome": "Should respond with a friendly greeting"
-    }
-  ],
-  "created_at": "2024-01-01T00:00:00Z",
-  "updated_at": "2024-01-01T00:00:00Z",
-  "case_count": 1
-}
-```
-
-**2. Create eval script** (`boba-evals/test.py`):
-
-```python
-from simboba import Boba
-
-boba = Boba()
-
-def my_agent(message: str) -> str:
-    return f"Hi there! You said: {message}"
-
-if __name__ == "__main__":
-    result = boba.run(agent=my_agent, dataset="hello-test")
-    print(f"Score: {result['score']:.1f}%")
-```
-
-**3. Run**:
-
-```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-boba run
-# Output: + Basic greeting
-#         Results: 1/1 passed (100.0%)
-
-boba baseline   # Save as baseline
-boba serve      # View at http://localhost:8787
 ```
 
 ## Future Updates
