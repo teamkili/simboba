@@ -12,7 +12,7 @@
     '---'
 ```
 
-Lightweight eval tracking with LLM-as-judge. Run evals as Python scripts, track results as git-friendly JSON files, view in a web UI. Designed for 1-click setup with your favourite AI coding tool.
+Lightweight tool to manage datasets and evals for your AI product. Supports LLM as a judge, tool calling and multi-turn conversations. Run evals as Python scripts, track results as git-friendly JSON files, view in a web UI. Designed for 1-click setup with your favourite AI coding tool.
 
 ## Installation
 
@@ -32,23 +32,44 @@ boba serve         # View results at http://localhost:8787
 
 ## Commands
 
-| Command                       | Description                                                             |
-| ----------------------------- | ----------------------------------------------------------------------- |
-| `boba init`                   | Create `boba-evals/` folder with starter templates                      |
-| `boba magic`                  | Print detailed prompt for AI coding assistant                           |
-| `boba run [script]`           | Run eval script (default: `test_chat.py`). Handles Docker automatically |
-| `boba baseline`               | Save a run as baseline for regression detection                         |
-| `boba serve`                  | Start web UI to view results                                            |
-| `boba datasets`               | List all datasets                                                       |
-| `boba generate "description"` | Generate a dataset from a description                                   |
-| `boba reset`                  | Clear run history (keeps datasets and baselines)                        |
+| Command                       | Description                                                        |
+| ----------------------------- | ------------------------------------------------------------------ |
+| `boba init`                   | Create `boba-evals/` folder with starter templates                 |
+| `boba magic`                  | Print detailed prompt for AI coding assistant                      |
+| `boba run [script]`           | Run eval script (default: `test.py`). Handles Docker automatically |
+| `boba baseline`               | Save a run as baseline for regression detection                    |
+| `boba serve`                  | Start web UI to view results                                       |
+| `boba datasets`               | List all datasets                                                  |
+| `boba generate "description"` | Generate a dataset from a description                              |
+| `boba reset`                  | Clear run history (keeps datasets and baselines)                   |
+
+## Instructions for AI coding assistants
+
+If you are helping a user set up Boba, plese use the following instructions to guide you:
+
+1. Boba helps users set up and run their first set of evals within a few minutes.
+2. Start by creating a dataset. Before creating this dataset, it is vital that you understand the user's product and what it does. If they have multiple flows in the product, we suggest asking the user to pick one of the flow and creating a dataset for this. When creating a dataset, look at schemas.py to understand the structure that you need to follow. You can also look at prompts/generation.py for an example of how to create a dataset. You can creating a dataset by giving a user a high quality prompt that they can run with boba generate. Alternatively, you can create the dataset yourself. Pay close attention to what you need in the expected output and expected metadata fields.
+3. Once you create a dataset, you can run evals as simple python scripts. Before doing so, please write a setup.py file for fixtures. To do this, please study the user's app and set up everything required to run the eval. This is usually some combination of: creating or using a user, using a project or team and any other set up before you can call the functions you want to evaluate. This setup.py file will be used before all tests.
+4. After you write setup.py, if the user is just getting started, write a simple eval script that allows them to evaluate some part of their app. Keep this small and concise so that the user understands how things work, and can expand from there.
+5. Once you run the first eval, you can help the user by extending evals to cover more logic in their product and help them create baselines.
+
+## How It Works
+
+The CLI and Python API work together:
+
+```
+boba run test.py  →  executes your script  →  which calls boba.eval() or boba.run()
+```
+
+- **CLI** (`boba run`): Handles Docker detection, environment setup, script execution
+- **Python API** (`Boba` class): Runs evaluations, stores results, compares to baselines
 
 ## Writing Evals
 
-Evals are Python scripts. Edit `boba-evals/test_chat.py`:
+Evals are Python scripts. Edit `boba-evals/test.py`:
 
 ```python
-from simboba import Boba
+from simboba import Boba, AgentResponse
 from setup import get_context, cleanup
 
 boba = Boba()
@@ -79,9 +100,38 @@ if __name__ == "__main__":
         cleanup()
 ```
 
+### Agent Return Types
+
+Your agent function can return:
+
+- **`str`** - Simple text response
+- **`AgentResponse`** - Response with metadata (citations, tool_calls, etc.)
+
+```python
+from simboba import AgentResponse
+
+# Simple agent - returns string
+def simple_agent(message: str) -> str:
+    return "Hello!"
+
+# Agent with metadata - returns AgentResponse
+def rag_agent(message: str) -> AgentResponse:
+    docs = search_documents(message)
+    response = generate_response(message, docs)
+    return AgentResponse(
+        output=response,
+        metadata={
+            "citations": [{"file": d.name, "page": d.page} for d in docs],
+            "tool_calls": ["search_documents"],
+        }
+    )
+```
+
 ## Metadata Checking
 
-Metadata (citations, tool_calls, etc.) is always passed to the LLM judge when provided. For strict deterministic checks, add a `metadata_checker` function:
+Metadata (citations, tool_calls, etc.) is always passed to the LLM judge when provided. For strict deterministic checks, add a `metadata_checker` function.
+
+### With boba.eval()
 
 ```python
 # Mode 1: No metadata - LLM judges output only
@@ -98,9 +148,9 @@ boba.eval(
 
 # Mode 3: LLM evaluates + deterministic check (both must pass)
 def check_tool_calls(expected, actual):
-    expected_tools = set(expected.get("tool_calls", []))
-    actual_tools = set(actual.get("tool_calls", []))
-    return expected_tools == actual_tools
+    if not expected or not actual:
+        return True
+    return set(expected.get("tool_calls", [])) == set(actual.get("tool_calls", []))
 
 boba.eval(
     input="What's my order status?",
@@ -108,11 +158,40 @@ boba.eval(
     expected="Should look up order status",
     expected_metadata={"tool_calls": ["get_orders"]},
     actual_metadata={"tool_calls": ["get_orders"]},
-    metadata_checker=check_tool_calls,  # Additional deterministic gate
+    metadata_checker=check_tool_calls,
+)
+```
+
+### With boba.run()
+
+Use `AgentResponse` to return metadata from your agent:
+
+```python
+from simboba import Boba, AgentResponse
+
+boba = Boba()
+
+def my_agent(message: str) -> AgentResponse:
+    response = call_my_llm(message)
+    return AgentResponse(
+        output=response.text,
+        metadata={"tool_calls": response.tool_calls}
+    )
+
+def check_tool_calls(expected, actual):
+    if not expected or not actual:
+        return True
+    return set(expected.get("tool_calls", [])) == set(actual.get("tool_calls", []))
+
+result = boba.run(
+    agent=my_agent,
+    dataset="my-dataset",
+    metadata_checker=check_tool_calls,
 )
 ```
 
 When using `metadata_checker`:
+
 - LLM still sees metadata for context/reasoning
 - Your function runs as an additional gate
 - Case passes only if **both** LLM judgment and metadata check pass
@@ -136,6 +215,32 @@ git commit -m "Update eval baseline"
 
 ## Creating Datasets
 
+### Dataset JSON Structure
+
+Datasets are stored as JSON files in `boba-evals/datasets/`:
+
+```json
+{
+  "id": "customer-support",
+  "name": "customer-support",
+  "description": "Customer support chatbot test cases",
+  "cases": [
+    {
+      "id": "case-001",
+      "name": "Order status inquiry",
+      "inputs": [
+        {"role": "user", "message": "What's the status of order #12345?"}
+      ],
+      "expected_outcome": "Agent should look up and report order status",
+      "expected_metadata": {"tool_calls": ["get_order_status"]}
+    }
+  ],
+  "created_at": "2024-01-15T10:00:00Z",
+  "updated_at": "2024-01-15T10:00:00Z",
+  "case_count": 1
+}
+```
+
 ### Via CLI
 
 ```bash
@@ -148,12 +253,13 @@ boba generate "A customer support chatbot for an e-commerce site"
 2. Click "New Dataset" -> "Generate with AI"
 3. Enter a description of your agent and we'll create test cases for you.
 
-### Via API
+### Via Python
 
 ```python
+# Create dataset file manually or use the API
 from simboba import Boba
 boba = Boba()
-boba.run(agent, dataset="my-dataset")  # Uses dataset created above
+boba.run(agent, dataset="my-dataset")  # Uses dataset from boba-evals/datasets/
 ```
 
 ## Test Fixtures (setup.py)
@@ -196,10 +302,61 @@ your-project/
 │   ├── runs/               # Run history (gitignored)
 │   ├── files/              # Uploaded attachments
 │   ├── setup.py            # Test fixtures
-│   ├── test_chat.py        # Your eval script
+│   ├── test.py        # Your eval script
 │   ├── settings.json       # Configuration
 │   └── .boba.yaml          # Runtime config (docker vs local)
 └── ...
+```
+
+## Complete Example
+
+End-to-end example you can copy and run:
+
+**1. Create dataset** (`boba-evals/datasets/hello-test.json`):
+
+```json
+{
+  "id": "hello-test",
+  "name": "hello-test",
+  "cases": [
+    {
+      "id": "test-1",
+      "name": "Basic greeting",
+      "inputs": [{"role": "user", "message": "Hello!"}],
+      "expected_outcome": "Should respond with a friendly greeting"
+    }
+  ],
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z",
+  "case_count": 1
+}
+```
+
+**2. Create eval script** (`boba-evals/test.py`):
+
+```python
+from simboba import Boba
+
+boba = Boba()
+
+def my_agent(message: str) -> str:
+    return f"Hi there! You said: {message}"
+
+if __name__ == "__main__":
+    result = boba.run(agent=my_agent, dataset="hello-test")
+    print(f"Score: {result['score']:.1f}%")
+```
+
+**3. Run**:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+boba run
+# Output: + Basic greeting
+#         Results: 1/1 passed (100.0%)
+
+boba baseline   # Save as baseline
+boba serve      # View at http://localhost:8787
 ```
 
 ## Future Updates

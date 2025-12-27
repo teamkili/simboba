@@ -1,8 +1,27 @@
 """Pydantic schemas for simboba data models."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 from pydantic import BaseModel, Field
+
+
+# --- Agent Response Model ---
+
+class AgentResponse(BaseModel):
+    """Response from an agent function.
+
+    Use this when your agent needs to return metadata (citations, tool_calls, etc.)
+    along with the output text.
+
+    Example:
+        def my_agent(message: str) -> AgentResponse:
+            return AgentResponse(
+                output="Here's the answer...",
+                metadata={"citations": [{"file": "doc.pdf", "page": 3}]}
+            )
+    """
+    output: str
+    metadata: Optional[dict] = None
 
 
 # --- Message/Input Models ---

@@ -14,12 +14,16 @@ Usage:
 """
 
 from datetime import datetime
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 from simboba import storage
+from simboba.schemas import AgentResponse
 
 # Type alias for metadata checker function
 MetadataChecker = Callable[[Optional[dict], Optional[dict]], bool]
+
+# Type alias for agent function - can return str or AgentResponse
+AgentCallable = Callable[[str], Union[str, AgentResponse]]
 
 
 class Boba:
@@ -145,7 +149,7 @@ class Boba:
 
     def run(
         self,
-        agent: Callable[[str], str],
+        agent: AgentCallable,
         dataset: str,
         name: Optional[str] = None,
         metadata_checker: Optional[MetadataChecker] = None,
@@ -154,7 +158,9 @@ class Boba:
         Run an agent against a dataset.
 
         Args:
-            agent: Function that takes a message string and returns a response string
+            agent: Function that takes a message string and returns either:
+                   - str: Just the response text
+                   - AgentResponse: Response with output and optional metadata
             dataset: Name of the dataset to run against
             name: Optional name for this run
             metadata_checker: Optional function(expected, actual) -> bool for
@@ -211,15 +217,22 @@ class Boba:
 
             # Call agent
             try:
-                output = agent(last_message)
+                agent_result = agent(last_message)
+                # Handle both str and AgentResponse return types
+                if isinstance(agent_result, AgentResponse):
+                    output = agent_result.output
+                    actual_metadata = agent_result.metadata
+                else:
+                    output = agent_result
+                    actual_metadata = None
                 error_message = None
             except Exception as e:
                 output = None
+                actual_metadata = None
                 error_message = str(e)
 
             # Judge if no error
             expected_metadata = case.get("expected_metadata")
-            actual_metadata = None  # TODO: agent could return metadata in future
 
             if error_message:
                 passed = False
