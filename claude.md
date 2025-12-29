@@ -99,7 +99,7 @@ result = boba.eval(
 
 # Dataset eval - runs agent against all cases in a dataset
 result = boba.run(
-    agent=my_agent_fn,  # Callable[[str], str | AgentResponse]
+    agent=my_agent_fn,  # Callable[[list[MessageInput]], str | AgentResponse]
     dataset="my-dataset",
 )
 # Returns: {"passed": int, "failed": int, "total": int, "score": float, "run_id": str, "regressions": list, "fixes": list}
@@ -123,13 +123,15 @@ result = boba.eval(
 To return metadata from your agent when using `boba.run()`, use `AgentResponse`:
 
 ```python
-from simboba import Boba, AgentResponse
+from simboba import Boba, AgentResponse, MessageInput
 
 boba = Boba()
 
-# Agent returns both output and metadata
-def my_agent(message: str) -> AgentResponse:
-    response = call_my_llm(message)
+# Agent receives full inputs list, returns output and metadata
+def my_agent(inputs: list[MessageInput]) -> AgentResponse:
+    # inputs is the full conversation history
+    # Each input has: role, message, attachments (optional), metadata (optional)
+    response = call_my_llm(inputs)
     return AgentResponse(
         output=response.text,
         metadata={
@@ -151,6 +153,9 @@ result = boba.run(
     metadata_checker=check_citations,
 )
 ```
+
+**Agent input:**
+- `inputs: list[MessageInput]` - Full conversation history. Each `MessageInput` has `role`, `message`, and optional `attachments`/`metadata`
 
 **Agent return types:**
 - `str` - Simple response, no metadata
@@ -243,6 +248,53 @@ When `metadata_checker` is provided:
 }
 ```
 
+### Multi-turn Conversations
+
+The `inputs` list supports multi-turn conversations with alternating `user` and `assistant` roles. The agent receives the full conversation history and should respond to the **last message**, using prior messages as context.
+
+**Multi-turn case example:**
+
+```json
+{
+  "name": "Follow-up question about order",
+  "inputs": [
+    {"role": "user", "message": "What's the status of my order #12345?"},
+    {"role": "assistant", "message": "Your order #12345 was shipped yesterday and is expected to arrive by Friday."},
+    {"role": "user", "message": "Can I change the delivery address?"}
+  ],
+  "expected_outcome": "Agent should explain how to change delivery address or whether it's still possible given the order has shipped"
+}
+```
+
+**How it works:**
+
+1. The agent function receives all three messages as `inputs: list[MessageInput]`
+2. The agent should use the conversation history as context (e.g., pass to an LLM)
+3. The agent returns a response to the last user message ("Can I change the delivery address?")
+4. The judge evaluates whether that response meets `expected_outcome`
+
+**Agent implementation for multi-turn:**
+
+```python
+def agent(inputs: list[MessageInput]) -> str:
+    # Convert to your LLM's format (e.g., Anthropic messages)
+    messages = [{"role": m.role, "content": m.message} for m in inputs]
+
+    # Call your LLM with full history
+    response = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        messages=messages,
+    )
+    return response.content[0].text
+```
+
+**Single-turn vs multi-turn:**
+
+| Type | `inputs` contains | Agent behavior |
+|------|-------------------|----------------|
+| Single-turn | One user message | Respond to that message |
+| Multi-turn | User/assistant alternating, ends with user | Respond to last message with prior context |
+
 ### CLI Commands
 
 | Command                | Description                                                           |
@@ -324,11 +376,14 @@ Copy-paste example with all files shown together.
 **2. Eval script** — `boba-evals/test.py`:
 
 ```python
-from simboba import Boba
+from simboba import Boba, MessageInput
 
 boba = Boba()
 
-def agent(message: str) -> str:
+def agent(inputs: list[MessageInput]) -> str:
+    # inputs is the full conversation history
+    # For simple cases, just get the last message:
+    # message = inputs[-1].message
     return "Hi there! How can I help?"
 
 if __name__ == "__main__":

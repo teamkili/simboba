@@ -17,13 +17,13 @@ from datetime import datetime
 from typing import Callable, Optional, Union
 
 from simboba import storage
-from simboba.schemas import AgentResponse
+from simboba.schemas import AgentResponse, MessageInput
 
 # Type alias for metadata checker function
 MetadataChecker = Callable[[Optional[dict], Optional[dict]], bool]
 
-# Type alias for agent function - can return str or AgentResponse
-AgentCallable = Callable[[str], Union[str, AgentResponse]]
+# Type alias for agent function - receives full inputs list, can return str or AgentResponse
+AgentCallable = Callable[[list[MessageInput]], Union[str, AgentResponse]]
 
 
 class Boba:
@@ -158,9 +158,12 @@ class Boba:
         Run an agent against a dataset.
 
         Args:
-            agent: Function that takes a message string and returns either:
+            agent: Function that takes the full inputs list (list[MessageInput])
+                   and returns either:
                    - str: Just the response text
                    - AgentResponse: Response with output and optional metadata
+                   The inputs list contains the full conversation history,
+                   allowing agents to use prior messages as context.
             dataset: Name of the dataset to run against
             name: Optional name for this run
             metadata_checker: Optional function(expected, actual) -> bool for
@@ -208,16 +211,14 @@ class Boba:
         for case in cases:
             case_id = case.get("id", storage.generate_id())
 
-            # Get input message (last user message)
+            # Get inputs (full conversation history)
             inputs = case.get("inputs", [])
-            if inputs and len(inputs) > 0:
-                last_message = inputs[-1].get("message", "")
-            else:
-                last_message = ""
+            # Convert to MessageInput for agent call (typed interface)
+            typed_inputs = [MessageInput(**inp) for inp in inputs]
 
-            # Call agent
+            # Call agent with full inputs list
             try:
-                agent_result = agent(last_message)
+                agent_result = agent(typed_inputs)
                 # Handle both str and AgentResponse return types
                 if isinstance(agent_result, AgentResponse):
                     output = agent_result.output

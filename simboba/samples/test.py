@@ -6,7 +6,7 @@ USAGE:
     boba serve        # View results in UI
 """
 
-from simboba import Boba
+from simboba import Boba, MessageInput
 from setup import get_context, cleanup
 
 
@@ -23,13 +23,20 @@ DATASET = "my-dataset"  # Change this!
 # AGENT FUNCTION
 # =============================================================================
 
-def agent(message: str) -> str:
+def agent(inputs: list[MessageInput]) -> str:
     """
-    Call your agent with the given message and return its response.
+    Call your agent with the conversation inputs and return its response.
+
+    Args:
+        inputs: Full conversation history as list[MessageInput].
+                Each MessageInput has: role, message, attachments (optional), metadata (optional)
 
     Replace this with your actual agent call.
     """
     ctx = get_context()
+
+    # Get the last user message (most common use case)
+    last_message = inputs[-1].message if inputs else ""
 
     # -------------------------------------------------------------------------
     # OPTION 1: HTTP API
@@ -38,16 +45,16 @@ def agent(message: str) -> str:
     # response = requests.post(
     #     "http://localhost:8000/api/chat",
     #     headers={"Authorization": f"Bearer {ctx['api_token']}"},
-    #     json={"user_id": ctx["user_id"], "message": message},
+    #     json={"user_id": ctx["user_id"], "message": last_message},
     # )
     # response.raise_for_status()
     # return response.json()["response"]
 
     # -------------------------------------------------------------------------
-    # OPTION 2: Direct Python call
+    # OPTION 2: Direct Python call (with full history)
     # -------------------------------------------------------------------------
     # from myapp.agent import run
-    # return run(user_id=ctx["user_id"], message=message)
+    # return run(user_id=ctx["user_id"], messages=inputs)
 
     # -------------------------------------------------------------------------
     # PLACEHOLDER - Replace with your agent call

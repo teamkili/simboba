@@ -40,11 +40,13 @@ pip install simboba
 **2. Eval script** — Create `boba-evals/test.py`:
 
 ```python
-from simboba import Boba
+from simboba import Boba, MessageInput
 
 boba = Boba()
 
-def agent(message: str) -> str:
+def agent(inputs: list[MessageInput]) -> str:
+    # inputs is the full conversation history
+    # For simple cases: message = inputs[-1].message
     return "Hi there! How can I help?"
 
 if __name__ == "__main__":
@@ -123,12 +125,15 @@ from setup import get_context, cleanup
 
 boba = Boba()
 
-def agent(message: str) -> str:
-    """Call your agent and return its response."""
+def agent(inputs: list[MessageInput]) -> str:
+    """Call your agent with conversation history and return its response."""
     ctx = get_context()
+    # inputs contains the full conversation history
+    # Each input has: role, message, attachments (optional), metadata (optional)
+    last_message = inputs[-1].message if inputs else ""
     response = requests.post(
         "http://localhost:8000/api/chat",
-        json={"user_id": ctx["user_id"], "message": message},
+        json={"user_id": ctx["user_id"], "message": last_message},
     )
     return response.json()["response"]
 
@@ -137,7 +142,7 @@ if __name__ == "__main__":
         # Option 1: Single eval
         boba.eval(
             input="Hello",
-            output=agent("Hello"),
+            output="Hi there!",  # Call your agent directly for single evals
             expected="Should greet the user",
         )
 
@@ -149,22 +154,26 @@ if __name__ == "__main__":
         cleanup()
 ```
 
-### Agent Return Types
+### Agent Input and Return Types
 
-Your agent function can return:
+Your agent function receives the full conversation history and can return:
 
 - **`str`** - Simple text response
 - **`AgentResponse`** - Response with metadata (citations, tool_calls, etc.)
 
 ```python
-from simboba import AgentResponse
+from simboba import AgentResponse, MessageInput
 
 # Simple agent - returns string
-def simple_agent(message: str) -> str:
+def simple_agent(inputs: list[MessageInput]) -> str:
+    # Get the last message for simple use cases
+    message = inputs[-1].message if inputs else ""
     return "Hello!"
 
 # Agent with metadata - returns AgentResponse
-def rag_agent(message: str) -> AgentResponse:
+def rag_agent(inputs: list[MessageInput]) -> AgentResponse:
+    # Use full conversation history for context
+    message = inputs[-1].message if inputs else ""
     docs = search_documents(message)
     response = generate_response(message, docs)
     return AgentResponse(
@@ -216,12 +225,13 @@ boba.eval(
 Use `AgentResponse` to return metadata from your agent:
 
 ```python
-from simboba import Boba, AgentResponse
+from simboba import Boba, AgentResponse, MessageInput
 
 boba = Boba()
 
-def my_agent(message: str) -> AgentResponse:
-    response = call_my_llm(message)
+def my_agent(inputs: list[MessageInput]) -> AgentResponse:
+    # inputs is the full conversation history
+    response = call_my_llm(inputs)
     return AgentResponse(
         output=response.text,
         metadata={"tool_calls": response.tool_calls}
