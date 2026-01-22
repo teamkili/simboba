@@ -6,18 +6,22 @@ from simboba.utils import LLMClient
 from simboba.prompts import build_judge_prompt
 
 
-def create_judge(model: Optional[str] = None):
+def create_judge(model: Optional[str] = None, prompt: Optional[str] = None):
     """Create a judge function that uses an LLM.
 
     Args:
         model: Model to use for judging (e.g., "gpt-4", "claude-sonnet-4-20250514")
                If not specified, uses LLMClient's default.
+        prompt: Custom prompt template for the judge. If not specified, uses default.
+                Available placeholders: {conversation}, {expected_outcome},
+                {expected_metadata_section}, {actual_output}, {actual_metadata_section}
 
     Returns:
         A function(inputs, expected_outcome, actual_output, expected_metadata, actual_metadata)
         -> (passed: bool, reasoning: str)
     """
     client = LLMClient(model=model)
+    prompt_template = prompt
 
     def judge(
         inputs: list,
@@ -27,16 +31,17 @@ def create_judge(model: Optional[str] = None):
         actual_metadata: Optional[dict] = None,
     ) -> Tuple[bool, str]:
         """Judge whether the actual output meets the expected outcome."""
-        prompt = build_judge_prompt(
+        judge_prompt = build_judge_prompt(
             inputs,
             expected_outcome,
             actual_output,
             expected_metadata=expected_metadata,
             actual_metadata=actual_metadata,
+            prompt_template=prompt_template,
         )
 
         try:
-            result = client.generate_json(prompt, max_tokens=1024)
+            result = client.generate_json(judge_prompt, max_tokens=1024)
             passed = bool(result.get("passed", False))
             reasoning = result.get("reasoning", "No reasoning provided")
             return passed, reasoning

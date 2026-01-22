@@ -44,6 +44,10 @@ export interface EvalResult {
   case?: Case
   inputs?: MessageInput[]
   expected_outcome?: string
+  // Metadata comparison fields
+  expected_metadata?: Record<string, unknown>
+  actual_metadata?: Record<string, unknown>
+  metadata_passed?: boolean | null  // null if no checker, true/false if checked
 }
 
 // Alias for backward compatibility

@@ -33,11 +33,12 @@ class Boba:
         """Initialize Boba."""
         self._warned_simple_judge = False
 
-    def _get_judge(self, warn: bool = True):
+    def _get_judge(self, warn: bool = True, prompt: str = None):
         """Get the judge function.
 
         Args:
             warn: Whether to print a warning if falling back to simple judge
+            prompt: Custom prompt template for the judge. If not specified, uses default.
 
         Returns:
             Judge function
@@ -45,7 +46,7 @@ class Boba:
         try:
             from simboba.judge import create_judge
             model = storage.get_setting("model")
-            return create_judge(model=model)
+            return create_judge(model=model, prompt=prompt)
         except Exception:
             if warn and not self._warned_simple_judge:
                 print("\n  No API key found. Using simple keyword-matching judge.")
@@ -67,6 +68,7 @@ class Boba:
         expected_metadata: Optional[dict] = None,
         actual_metadata: Optional[dict] = None,
         metadata_checker: Optional[MetadataChecker] = None,
+        judge_prompt: Optional[str] = None,
     ) -> dict:
         """
         Evaluate a single input/output pair.
@@ -81,6 +83,10 @@ class Boba:
             metadata_checker: Optional function(expected, actual) -> bool for
                             deterministic metadata checking. If not provided,
                             metadata is passed to the LLM judge.
+            judge_prompt: Custom prompt template for the judge. If not provided,
+                         uses default. Available placeholders: {conversation},
+                         {expected_outcome}, {expected_metadata_section},
+                         {actual_output}, {actual_metadata_section}
 
         Returns:
             dict with: passed, reasoning, run_id
@@ -99,7 +105,7 @@ class Boba:
         }
 
         # Judge the output (always pass metadata to LLM when provided)
-        judge_fn = self._get_judge()
+        judge_fn = self._get_judge(prompt=judge_prompt)
         inputs = [{"role": "user", "message": input}]
         output_passed, reasoning = judge_fn(
             inputs, expected, output,
@@ -153,6 +159,7 @@ class Boba:
         dataset: str,
         name: Optional[str] = None,
         metadata_checker: Optional[MetadataChecker] = None,
+        judge_prompt: Optional[str] = None,
     ) -> dict:
         """
         Run an agent against a dataset.
@@ -169,6 +176,10 @@ class Boba:
             metadata_checker: Optional function(expected, actual) -> bool for
                             deterministic metadata checking. If not provided,
                             metadata is passed to the LLM judge.
+            judge_prompt: Custom prompt template for the judge. If not provided,
+                         uses default. Available placeholders: {conversation},
+                         {expected_outcome}, {expected_metadata_section},
+                         {actual_output}, {actual_metadata_section}
 
         Returns:
             dict with: passed, failed, total, score, run_id, regressions, fixes
@@ -202,7 +213,7 @@ class Boba:
         run = storage.save_run(dataset_id, run)
 
         # Get judge
-        judge_fn = self._get_judge()
+        judge_fn = self._get_judge(prompt=judge_prompt)
 
         # Run each case
         passed_count = 0

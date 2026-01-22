@@ -59,6 +59,7 @@ def build_judge_prompt(
     actual_output: str,
     expected_metadata: dict = None,
     actual_metadata: dict = None,
+    prompt_template: str = None,
 ) -> str:
     """Build a judge prompt for evaluating an output.
 
@@ -68,6 +69,9 @@ def build_judge_prompt(
         actual_output: What the agent actually produced
         expected_metadata: Expected metadata (citations, tool_calls, etc.)
         actual_metadata: Actual metadata from the agent response
+        prompt_template: Custom prompt template. If not provided, uses default.
+                        Available placeholders: {conversation}, {expected_outcome},
+                        {expected_metadata_section}, {actual_output}, {actual_metadata_section}
 
     Returns:
         Formatted prompt string
@@ -83,7 +87,9 @@ def build_judge_prompt(
     if actual_metadata:
         actual_metadata_section = f"\n## Actual Metadata\n```json\n{json.dumps(actual_metadata, indent=2)}\n```\n"
 
-    return JUDGE_PROMPT.format(
+    template = prompt_template if prompt_template is not None else JUDGE_PROMPT
+
+    return template.format(
         conversation=conversation,
         expected_outcome=expected_outcome,
         expected_metadata_section=expected_metadata_section,

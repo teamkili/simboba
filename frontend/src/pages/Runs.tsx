@@ -413,6 +413,43 @@ function ResultItem({
             <div className="p-3 bg-white border border-zinc-200 text-sm">{expectedOutcome}</div>
           </div>
 
+          {/* Metadata Comparison */}
+          {(result.expected_metadata || result.actual_metadata) && (
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                  Metadata
+                </div>
+                {result.metadata_passed !== null && result.metadata_passed !== undefined && (
+                  <Badge variant={result.metadata_passed ? 'success' : 'error'} className="text-[10px] px-1.5 py-0">
+                    {result.metadata_passed ? 'Match' : 'Mismatch'}
+                  </Badge>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {result.expected_metadata && (
+                  <div>
+                    <div className="text-[10px] font-medium text-zinc-400 mb-1">Expected</div>
+                    <pre className="p-2 bg-white border border-zinc-200 text-xs font-mono overflow-x-auto max-h-32 overflow-y-auto">
+                      {JSON.stringify(result.expected_metadata, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {result.actual_metadata && (
+                  <div>
+                    <div className="text-[10px] font-medium text-zinc-400 mb-1">Actual</div>
+                    <pre className={cn(
+                      "p-2 bg-white border text-xs font-mono overflow-x-auto max-h-32 overflow-y-auto",
+                      result.metadata_passed === false ? "border-red-300" : "border-zinc-200"
+                    )}>
+                      {JSON.stringify(result.actual_metadata, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Judge Reasoning */}
           {result.reasoning && (
             <div className="mb-4">
