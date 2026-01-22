@@ -256,6 +256,69 @@ When using `metadata_checker`:
 - Case passes only if **both** LLM judgment and metadata check pass
 - Results include `metadata_passed` field for visibility
 
+## Custom Judge Prompts
+
+By default, Boba uses a built-in prompt for the LLM judge. You can override this with your own prompt using the `judge_prompt` parameter.
+
+### Available Placeholders
+
+Your custom prompt can use these placeholders:
+
+| Placeholder | Description |
+|-------------|-------------|
+| `{conversation}` | Formatted conversation history |
+| `{expected_outcome}` | What the agent should do |
+| `{actual_output}` | What the agent produced |
+| `{expected_metadata_section}` | Expected metadata (if any) |
+| `{actual_metadata_section}` | Actual metadata (if any) |
+
+### Example: Custom Prompt
+
+```python
+from simboba import Boba, JUDGE_PROMPT  # JUDGE_PROMPT is the default
+
+boba = Boba()
+
+# Your custom prompt - must output JSON with "passed" and "reasoning"
+custom_prompt = """You are a strict code review judge.
+
+## Conversation
+{conversation}
+
+## Expected Behavior
+{expected_outcome}
+
+## Actual Output
+{actual_output}
+
+Evaluate strictly. Only pass if the output EXACTLY matches expectations.
+Respond with JSON: {{"passed": true/false, "reasoning": "..."}}
+"""
+
+# Use with boba.eval()
+boba.eval(
+    input="Write a hello world function",
+    output="def hello(): print('Hello')",
+    expected="Should define a function that prints Hello World",
+    judge_prompt=custom_prompt,
+)
+
+# Use with boba.run()
+boba.run(
+    agent=my_agent,
+    dataset="my-dataset",
+    judge_prompt=custom_prompt,
+)
+```
+
+### Viewing the Default Prompt
+
+```python
+from simboba import JUDGE_PROMPT
+
+print(JUDGE_PROMPT)  # See what the default prompt looks like
+```
+
 ## Regression Detection
 
 Track regressions across code changes:
