@@ -372,6 +372,137 @@ class TestBaselines:
         assert response.status_code == 404
 
 
+class TestCaseFiltering:
+    """Test running individual/subset of cases from a dataset."""
+
+    def _create_dataset_with_cases(self, client, name, num_cases=3):
+        """Helper: create a dataset with N cases, return list of case IDs."""
+        client.post("/api/datasets", json={"name": name})
+        case_ids = []
+        for i in range(num_cases):
+            resp = client.post(
+                "/api/cases",
+                json={
+                    "dataset_name": name,
+                    "name": f"Case {i}",
+                    "inputs": [{"role": "user", "message": f"msg-{i}", "attachments": []}],
+                    "expected_outcome": "test response",
+                },
+            )
+            case_ids.append(resp.json()["id"])
+        return case_ids
+
+    def test_run_specific_cases(self, client, evals_dir, monkeypatch):
+        """Running with case_ids should only execute those cases."""
+        from simboba import Boba, storage
+
+        monkeypatch.setattr(storage, "get_evals_dir", lambda: evals_dir)
+
+        case_ids = self._create_dataset_with_cases(client, "filter-test", 3)
+
+        boba = Boba()
+        result = boba.run(
+            agent=lambda inputs: "response",
+            dataset="filter-test",
+            case_ids=[case_ids[0], case_ids[2]],
+        )
+
+        assert result["total"] == 2
+        assert result["passed"] + result["failed"] == 2
+
+    def test_run_single_case(self, client, evals_dir, monkeypatch):
+        """Running with a single case_id should execute only that case."""
+        from simboba import Boba, storage
+
+        monkeypatch.setattr(storage, "get_evals_dir", lambda: evals_dir)
+
+        case_ids = self._create_dataset_with_cases(client, "single-test", 5)
+
+        boba = Boba()
+        result = boba.run(
+            agent=lambda inputs: "response",
+            dataset="single-test",
+            case_ids=[case_ids[2]],
+        )
+
+        assert result["total"] == 1
+        assert result["passed"] + result["failed"] == 1
+
+    def test_invalid_case_id_raises(self, client, evals_dir, monkeypatch):
+        """Passing a nonexistent case_id should raise ValueError."""
+        import pytest
+        from simboba import Boba, storage
+
+        monkeypatch.setattr(storage, "get_evals_dir", lambda: evals_dir)
+
+        self._create_dataset_with_cases(client, "invalid-test", 2)
+
+        boba = Boba()
+        with pytest.raises(ValueError, match="Case IDs not found"):
+            boba.run(
+                agent=lambda inputs: "response",
+                dataset="invalid-test",
+                case_ids=["nonexistent-id"],
+            )
+
+    def test_case_ids_via_env_var(self, client, evals_dir, monkeypatch):
+        """BOBA_CASE_IDS env var should filter cases when case_ids not passed."""
+        from simboba import Boba, storage
+
+        monkeypatch.setattr(storage, "get_evals_dir", lambda: evals_dir)
+
+        case_ids = self._create_dataset_with_cases(client, "env-test", 4)
+
+        # Set env var with two case IDs
+        monkeypatch.setenv("BOBA_CASE_IDS", f"{case_ids[1]},{case_ids[3]}")
+
+        boba = Boba()
+        result = boba.run(
+            agent=lambda inputs: "response",
+            dataset="env-test",
+        )
+
+        assert result["total"] == 2
+
+    def test_explicit_case_ids_overrides_env(self, client, evals_dir, monkeypatch):
+        """Explicit case_ids param should take precedence over env var."""
+        from simboba import Boba, storage
+
+        monkeypatch.setattr(storage, "get_evals_dir", lambda: evals_dir)
+
+        case_ids = self._create_dataset_with_cases(client, "override-test", 3)
+
+        # Env says run 2 cases
+        monkeypatch.setenv("BOBA_CASE_IDS", f"{case_ids[0]},{case_ids[1]}")
+
+        boba = Boba()
+        # Explicit param says run 1 case
+        result = boba.run(
+            agent=lambda inputs: "response",
+            dataset="override-test",
+            case_ids=[case_ids[2]],
+        )
+
+        assert result["total"] == 1
+
+    def test_empty_case_ids_runs_all(self, client, evals_dir, monkeypatch):
+        """Empty case_ids list should run all cases (treated as no filter)."""
+        from simboba import Boba, storage
+
+        monkeypatch.setattr(storage, "get_evals_dir", lambda: evals_dir)
+
+        self._create_dataset_with_cases(client, "empty-filter-test", 3)
+
+        boba = Boba()
+        result = boba.run(
+            agent=lambda inputs: "response",
+            dataset="empty-filter-test",
+            case_ids=[],
+        )
+
+        assert result["total"] == 3
+
+
 class TestSettings:
     """Test settings API endpoints."""
 

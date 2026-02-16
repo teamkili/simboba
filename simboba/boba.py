@@ -13,6 +13,7 @@ Usage:
     boba.run(agent_fn, dataset="my-dataset")
 """
 
+import os
 from datetime import datetime
 from typing import Callable, Optional, Union
 
@@ -160,6 +161,7 @@ class Boba:
         name: Optional[str] = None,
         metadata_checker: Optional[MetadataChecker] = None,
         judge_prompt: Optional[str] = None,
+        case_ids: Optional[list[str]] = None,
     ) -> dict:
         """
         Run an agent against a dataset.
@@ -180,6 +182,9 @@ class Boba:
                          uses default. Available placeholders: {conversation},
                          {expected_outcome}, {expected_metadata_section},
                          {actual_output}, {actual_metadata_section}
+            case_ids: Optional list of case IDs to run. If provided, only
+                     matching cases are executed. If not provided, falls back
+                     to BOBA_CASE_IDS environment variable (comma-separated).
 
         Returns:
             dict with: passed, failed, total, score, run_id, regressions, fixes
@@ -195,6 +200,23 @@ class Boba:
         cases = ds.get("cases", [])
         if not cases:
             raise ValueError(f"Dataset '{dataset}' has no cases")
+
+        # Resolve case_ids: explicit param > env var > None (run all)
+        if case_ids is None:
+            env_case_ids = os.environ.get("BOBA_CASE_IDS")
+            if env_case_ids:
+                case_ids = [cid.strip() for cid in env_case_ids.split(",") if cid.strip()]
+
+        # Filter to specific cases if requested
+        if case_ids is not None and len(case_ids) > 0:
+            available_ids = {c.get("id") for c in cases}
+            unknown_ids = set(case_ids) - available_ids
+            if unknown_ids:
+                raise ValueError(
+                    f"Case IDs not found in dataset '{dataset}': {', '.join(sorted(unknown_ids))}"
+                )
+            case_id_set = set(case_ids)
+            cases = [c for c in cases if c.get("id") in case_id_set]
 
         # Create run record
         run = {
