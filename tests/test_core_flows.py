@@ -503,6 +503,152 @@ class TestCaseFiltering:
         assert result["total"] == 3
 
 
+class TestParallelExecution:
+    """Test parallel case execution with max_workers."""
+
+    def _create_dataset_with_cases(self, client, name, num_cases=5):
+        """Helper: create a dataset with N cases, return list of case IDs."""
+        client.post("/api/datasets", json={"name": name})
+        case_ids = []
+        for i in range(num_cases):
+            resp = client.post(
+                "/api/cases",
+                json={
+                    "dataset_name": name,
+                    "name": f"Case {i}",
+                    "inputs": [{"role": "user", "message": f"msg-{i}", "attachments": []}],
+                    "expected_outcome": "test response",
+                },
+            )
+            case_ids.append(resp.json()["id"])
+        return case_ids
+
+    def test_parallel_produces_correct_results(self, client, evals_dir, monkeypatch):
+        """Parallel execution should produce the same result counts as sequential."""
+        from simboba import Boba, storage
+
+        monkeypatch.setattr(storage, "get_evals_dir", lambda: evals_dir)
+
+        self._create_dataset_with_cases(client, "parallel-test", 5)
+
+        boba = Boba()
+        result = boba.run(
+            agent=lambda inputs: f"Response to: {inputs[-1].message}",
+            dataset="parallel-test",
+            max_workers=3,
+        )
+
+        assert result["total"] == 5
+        assert result["passed"] + result["failed"] == 5
+        assert result["run_id"] is not None
+        assert "score" in result
+
+    def test_parallel_handles_agent_errors(self, client, evals_dir, monkeypatch):
+        """Agent exceptions in parallel mode should be recorded, not crash the run."""
+        import threading
+        from simboba import Boba, storage
+
+        monkeypatch.setattr(storage, "get_evals_dir", lambda: evals_dir)
+
+        self._create_dataset_with_cases(client, "error-parallel", 4)
+
+        call_count = 0
+        lock = threading.Lock()
+
+        def flaky_agent(inputs):
+            nonlocal call_count
+            with lock:
+                call_count += 1
+                current = call_count
+            if current == 2:
+                raise RuntimeError("Simulated failure")
+            return "ok"
+
+        boba = Boba()
+        result = boba.run(
+            agent=flaky_agent,
+            dataset="error-parallel",
+            max_workers=2,
+        )
+
+        assert result["total"] == 4
+        assert result["passed"] + result["failed"] == 4
+        assert result["failed"] >= 1
+
+    def test_sequential_is_default(self, client, evals_dir, monkeypatch):
+        """max_workers=None should work (sequential, backward compatible)."""
+        from simboba import Boba, storage
+
+        monkeypatch.setattr(storage, "get_evals_dir", lambda: evals_dir)
+
+        self._create_dataset_with_cases(client, "seq-default", 2)
+
+        boba = Boba()
+        result = boba.run(
+            agent=lambda inputs: "ok",
+            dataset="seq-default",
+        )
+
+        assert result["total"] == 2
+        assert result["passed"] + result["failed"] == 2
+
+    def test_max_workers_one_is_sequential(self, client, evals_dir, monkeypatch):
+        """max_workers=1 should behave like sequential execution."""
+        from simboba import Boba, storage
+
+        monkeypatch.setattr(storage, "get_evals_dir", lambda: evals_dir)
+
+        self._create_dataset_with_cases(client, "workers-one", 3)
+
+        boba = Boba()
+        result = boba.run(
+            agent=lambda inputs: "ok",
+            dataset="workers-one",
+            max_workers=1,
+        )
+
+        assert result["total"] == 3
+        assert result["passed"] + result["failed"] == 3
+
+    def test_max_workers_via_env_var(self, client, evals_dir, monkeypatch):
+        """BOBA_MAX_WORKERS env var should enable parallel execution."""
+        from simboba import Boba, storage
+
+        monkeypatch.setattr(storage, "get_evals_dir", lambda: evals_dir)
+
+        self._create_dataset_with_cases(client, "env-workers", 4)
+
+        monkeypatch.setenv("BOBA_MAX_WORKERS", "2")
+
+        boba = Boba()
+        result = boba.run(
+            agent=lambda inputs: "ok",
+            dataset="env-workers",
+        )
+
+        assert result["total"] == 4
+        assert result["passed"] + result["failed"] == 4
+
+    def test_parallel_with_case_ids(self, client, evals_dir, monkeypatch):
+        """Parallel execution should work together with case_ids filtering."""
+        from simboba import Boba, storage
+
+        monkeypatch.setattr(storage, "get_evals_dir", lambda: evals_dir)
+
+        case_ids = self._create_dataset_with_cases(client, "parallel-filter", 5)
+
+        boba = Boba()
+        result = boba.run(
+            agent=lambda inputs: "ok",
+            dataset="parallel-filter",
+            case_ids=[case_ids[0], case_ids[2], case_ids[4]],
+            max_workers=2,
+        )
+
+        assert result["total"] == 3
+        assert result["passed"] + result["failed"] == 3
+
+
 class TestSettings:
     """Test settings API endpoints."""
 

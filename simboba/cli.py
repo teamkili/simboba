@@ -354,7 +354,8 @@ This will execute the eval script and track results. Then run `boba serve` to vi
 @main.command()
 @click.argument("script", default="test.py")
 @click.option("--case", "-c", "case_ids", multiple=True, help="Run only specific case IDs (repeatable)")
-def run(script: str, case_ids: tuple):
+@click.option("--parallel", "-p", "max_workers", type=int, default=None, help="Number of parallel workers")
+def run(script: str, case_ids: tuple, max_workers: int | None):
     """Run an eval script.
 
     Automatically handles Docker vs local execution based on your config.
@@ -366,6 +367,7 @@ def run(script: str, case_ids: tuple):
         boba run my_eval.py         # Runs boba-evals/my_eval.py
         boba run -c abc123          # Run only case abc123
         boba run -c abc -c def      # Run cases abc and def
+        boba run -p 4               # Run with 4 parallel workers
     """
     import subprocess
     import sys
@@ -390,11 +392,13 @@ def run(script: str, case_ids: tuple):
 
     config = load_config()
 
-    # Pass case IDs via environment variable
+    # Pass options via environment variables
     import os
     env = os.environ.copy()
     if case_ids:
         env["BOBA_CASE_IDS"] = ",".join(case_ids)
+    if max_workers is not None:
+        env["BOBA_MAX_WORKERS"] = str(max_workers)
 
     # If local or already in container, just run python
     if config.runtime == "local" or inside_container():
