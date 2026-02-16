@@ -1,12 +1,17 @@
 import { Link } from 'react-router-dom'
 import { useStore } from '@/hooks/useStore'
+import { usePolling } from '@/hooks/usePolling'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn, relativeTime } from '@/lib/utils'
 
 export function Dashboard() {
-  const { state } = useStore()
+  const { state, refreshAll } = useStore()
   const { datasets, runs, loading } = state
+
+  // Poll every 5s when any run is active
+  const hasRunningRuns = runs.some(r => r.status === 'running')
+  usePolling(refreshAll, 5000, hasRunningRuns)
 
   if (loading.datasets || loading.runs) {
     return (

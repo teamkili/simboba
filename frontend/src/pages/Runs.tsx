@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { User, Bot } from 'lucide-react'
 import { useStore } from '@/hooks/useStore'
+import { usePolling } from '@/hooks/usePolling'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,11 +13,15 @@ import type { Run, RunResult, MessageInput, Case } from '@/types'
 export function Runs() {
   const { datasetId, filename } = useParams()
   const navigate = useNavigate()
-  const { state, deleteRun, showToast } = useStore()
+  const { state, loadRuns, deleteRun, showToast } = useStore()
   const { datasets, runs, loading } = state
 
   const [selectedRun, setSelectedRun] = useState<Run | null>(null)
   const [loadingRun, setLoadingRun] = useState(false)
+
+  // Poll run list every 3s when any run is active
+  const hasRunningRuns = runs.some(r => r.status === 'running')
+  usePolling(loadRuns, 3000, hasRunningRuns)
 
   const loadRunDetail = useCallback(async (dsId: string, fname: string) => {
     setLoadingRun(true)
@@ -51,6 +56,12 @@ export function Runs() {
       showToast('Failed to delete run', true)
     }
   }
+
+  const refreshSelectedRun = useCallback(() => {
+    if (datasetId && filename) {
+      loadRunDetail(datasetId, filename)
+    }
+  }, [datasetId, filename, loadRunDetail])
 
   const closeRunSidebar = () => {
     setSelectedRun(null)
@@ -143,6 +154,7 @@ export function Runs() {
         datasets={datasets}
         onClose={closeRunSidebar}
         onDelete={handleDeleteRun}
+        onRefresh={refreshSelectedRun}
       />
     </>
   )
@@ -154,14 +166,20 @@ function RunSidebar({
   datasets,
   onClose,
   onDelete,
+  onRefresh,
 }: {
   run: Run | null
   loading: boolean
   datasets: { id: string; name: string }[]
   onClose: () => void
   onDelete: () => void
+  onRefresh: () => void
 }) {
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set())
+
+  // Poll run detail every 2s when the selected run is still running
+  const isRunning = run?.status === 'running'
+  usePolling(onRefresh, 2000, !!isRunning)
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
