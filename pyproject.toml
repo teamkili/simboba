@@ -45,9 +45,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ntkris/simboba"
-Repository = "https://github.com/ntkris/simboba"
-Issues = "https://github.com/ntkris/simboba/issues"
+Homepage = "https://github.com/teamkili/simboba"
+Repository = "https://github.com/teamkili/simboba"
+Issues = "https://github.com/teamkili/simboba/issues"
 
 [project.scripts]
 boba = "simboba.cli:main"
